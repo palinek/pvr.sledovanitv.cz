@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+  <!-- M3U -->
+  <category label="30010">
+    <setting id="userName" type="text" label="30000" default=""/>
+    <setting id="password" type="text" option="hidden" label="30001" default=""/>
+  </category>
+
+</settings>
