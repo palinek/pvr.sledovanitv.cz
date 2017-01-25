@@ -24,9 +24,9 @@
  */
 
 #include <vector>
-#include "platform/util/StdString.h"
+#include "p8-platform/util/StdString.h"
 #include "client.h"
-#include "platform/threads/threads.h"
+#include "p8-platform/threads/threads.h"
 #include "apimanager.h"
 
 struct PVRIptvEpgEntry
@@ -106,7 +106,7 @@ struct PVRIptvTimer
   int             iGenreSubType;
 };
 
-class PVRIptvData : public PLATFORM::CThread
+class PVRIptvData : public P8PLATFORM::CThread
 {
 public:
   PVRIptvData(void);
@@ -159,7 +159,7 @@ private:
   std::vector<PVRIptvEpgChannel>    m_epg;
   std::vector<PVRIptvRecording>     m_recordings;
   std::vector<PVRIptvTimer>         m_timers;
-  PLATFORM::CMutex                  m_mutex;
+  P8PLATFORM::CMutex                m_mutex;
 
   ApiManager                        m_manager;
 };

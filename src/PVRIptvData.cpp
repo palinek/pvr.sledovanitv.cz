@@ -89,7 +89,7 @@ PVRIptvData::~PVRIptvData(void)
 
 bool PVRIptvData::LoadEPG(time_t iStart, time_t iEnd) 
 {
-  PLATFORM::CLockObject critical(m_mutex);
+  P8PLATFORM::CLockObject critical(m_mutex);
 
   if (!m_manager.isLoggedIn())
   {
@@ -129,7 +129,7 @@ bool PVRIptvData::LoadEPG(time_t iStart, time_t iEnd)
       epgChannel.strName = iptvchannel->strChannelName;
 
       Json::Value epgData = channels[strChId];
-      for (int j = 0; j < epgData.size(); j++)
+      for (unsigned int j = 0; j < epgData.size(); j++)
       {
         Json::Value epgEntry = epgData[j];
 
@@ -161,7 +161,7 @@ bool PVRIptvData::LoadEPG(time_t iStart, time_t iEnd)
 
 bool PVRIptvData::LoadRecordings()
 {
-  PLATFORM::CLockObject critical(m_mutex);
+  P8PLATFORM::CLockObject critical(m_mutex);
 
   if (!m_manager.isLoggedIn())
   {
@@ -191,7 +191,7 @@ bool PVRIptvData::LoadRecordings()
   }
 
   Json::Value records = root["records"];
-  for (int i = 0; i < records.size(); i++)
+  for (unsigned int i = 0; i < records.size(); i++)
   {
     Json::Value record = records[i];
     PVRIptvChannel* channel = FindChannel(record.get("channel", "").asString(), "");
@@ -272,7 +272,7 @@ bool PVRIptvData::LoadPlayList(void)
   }
 
   Json::Value channels = root["channels"];
-  for (int i = 0; i < channels.size(); i++)
+  for (unsigned int i = 0; i < channels.size(); i++)
   {
     Json::Value channel = channels[i];
     PVRIptvChannel iptvchan;
@@ -586,7 +586,7 @@ string PVRIptvData::FindTvShowId(const PVRIptvChannel &channel, time_t iStart, t
   Json::Value::Members ch = root["channels"].getMemberNames();
   std::string strChannelId = ch[0];
 
-  int i = 0;
+  unsigned int i = 0;
   Json::Value event = root["channels"][strChannelId][i];
 
   return event.get("eventId", "").asString();

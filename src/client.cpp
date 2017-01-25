@@ -24,7 +24,7 @@
 
 #include "client.h"
 
-#include "platform/util/util.h"
+#include "p8-platform/util/util.h"
 #include "PVRIptvData.h"
 #include "kodi/xbmc_pvr_dll.h"
 #include "kodi/libKODI_guilib.h"
@@ -311,6 +311,7 @@ PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio)
 
 bool OpenLiveStream(const PVR_CHANNEL &channel)
 {
+  XBMC->Log(LOG_DEBUG, "%s - OpenLiveStream", __FUNCTION__);
   if (m_data)
   {
     CloseLiveStream();
@@ -522,9 +523,16 @@ void DemuxAbort(void) {}
 DemuxPacket* DemuxRead(void) { return NULL; }
 unsigned int GetChannelSwitchDelay(void) { return 0; }
 void PauseStream(bool bPaused) {}
-bool SeekTime(int,bool,double*) { return false; }
+bool SeekTime(double,bool,double*) { return false; }
 void SetSpeed(int) {};
 time_t GetPlayingTime() { return 0; }
 time_t GetBufferTimeStart() { return 0; }
 time_t GetBufferTimeEnd() { return 0; }
+void OnSystemSleep() { }
+void OnSystemWake() { }
+void OnPowerSavingActivated() { }
+void OnPowerSavingDeactivated() { }
+PVR_ERROR SetEPGTimeFrame(int) { return PVR_ERROR_NOT_IMPLEMENTED; }
+bool IsRealTimeStream() { return true; }
+
 }

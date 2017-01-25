@@ -1,1 +1,1 @@
-pvr.sledovanitv https://github.com/PepaRokos/pvr.sledovanitv.git Jarvis
+pvr.sledovanitv https://github.com/PepaRokos/pvr.sledovanitv.git Krypton

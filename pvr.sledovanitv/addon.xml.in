@@ -10,7 +10,7 @@
   </requires>
   <extension
     point="xbmc.pvrclient"
-    library_linux="pvr.sledovanitv.so.1.9.4"/>
+    library_@PLATFORM@="@LIBRARY_FILENAME@"/>
   <extension point="xbmc.addon.metadata">
     <summary lang="en">XBMC PVR addon for sledovanitv.cz</summary>
     <summary lang="cs">Rozhraní XBMC pro sledovanitv.cz</summary>
@@ -18,6 +18,6 @@
     <description lang="cs">PVR klient pro službu sledovanitv.cz. Podporuje živé TV vysílání, rádio, seznam a plánování nahrávek, EPG.</description>
     <disclaimer lang="en">This is unstable software! The authors are in no way responsible for failed playings, incorrect EPG times, wasted hours, or any other undesirable effects.</disclaimer>
     <disclaimer lang="cs">Tento software není stabilní. Autoři nejsou žádným způsobem zodpovědní za selhání při nahrávání, neplatné časovače, ztracený čas, či jakékoliv jiné nežádoucí události...</disclaimer>
-    <platform>linux</platform>
+    <platform>@PLATFORM@</platform>
   </extension>
 </addon>
