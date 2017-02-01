@@ -256,6 +256,7 @@ PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
   pCapabilities->bSupportsChannelGroups   = true;
   pCapabilities->bSupportsRecordings      = true;
   pCapabilities->bSupportsTimers          = true;
+//  pCapabilities->bHandlesInputStream      = true;
 
   return PVR_ERROR_NO_ERROR;
 }
@@ -483,7 +484,7 @@ PVR_ERROR DeleteRecording(const PVR_RECORDING &recording)
 
 bool IsTimeshifting(void)
 {
-        return false;
+  return true;
 }
 
 const char *GetBackendHostname(void)

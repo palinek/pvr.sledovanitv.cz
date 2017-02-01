@@ -202,7 +202,14 @@ bool ApiManager::login()
 
 std::string ApiManager::getPlaylist()
 {
-  return apiCall("playlist", ApiParamMap());
+  ApiParamMap params;
+  params["format"] = "m3u8";
+  return apiCall("playlist", params);
+}
+
+std::string ApiManager::getStreamQualities()
+{
+    return apiCall("get-stream-qualities", ApiParamMap());
 }
 
 std::string ApiManager::getEpg()
@@ -223,6 +230,7 @@ std::string ApiManager::getRecordingUrl(const std::string &recId)
 {
   ApiParamMap param;
   param["recordId"] = recId;
+  param["format"] = "m3u8";
 
   std::string resp = apiCall("record-timeshift", param);
 

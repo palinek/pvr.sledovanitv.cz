@@ -39,6 +39,7 @@ public:
   bool login();
   bool isLoggedIn() { return !m_sessionId.empty(); }
   std::string getPlaylist();
+  std::string getStreamQualities();
   std::string getEpg(); //TODO timerange
   std::string getPvr();
   std::string getRecordingUrl(const std::string &recId);

@@ -270,6 +270,9 @@ bool PVRIptvData::LoadPlayList(void)
     XBMC->Log(LOG_NOTICE, "Cannot parse playlist.");
     return false;
   }
+  
+  std::string qualities = m_manager.getStreamQualities();
+  XBMC->Log(LOG_DEBUG, "Stream qualities: %s", qualities.c_str());
 
   Json::Value channels = root["channels"];
   for (unsigned int i = 0; i < channels.size(); i++)
@@ -280,12 +283,17 @@ bool PVRIptvData::LoadPlayList(void)
     iptvchan.strTvgId = channel.get("id", "").asString();
     iptvchan.strChannelName = channel.get("name", "").asString();
     iptvchan.strStreamURL = channel.get("url", "").asString();
+    
+    XBMC->Log(LOG_DEBUG, "Channel %s, URL: %s", iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
+    
+    std::string strUrl = iptvchan.strStreamURL;
+    size_t qIndex = strUrl.find("quality");
+    strUrl.replace(strUrl.begin() + qIndex, strUrl.end(), "quality=40");
+    iptvchan.strStreamURL = strUrl;
     iptvchan.iUniqueId = GetChannelId(iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
     iptvchan.iChannelNumber = i + 1;
     iptvchan.strLogoPath = channel.get("logoUrl", "").asString();
     iptvchan.bRadio = channel.get("type", "").asString() != "tv";
-
-    XBMC->Log(LOG_DEBUG, iptvchan.strChannelName.c_str());
 
     m_channels.push_back(iptvchan);
   }
