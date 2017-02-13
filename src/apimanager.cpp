@@ -25,6 +25,7 @@
 #include <json/json.h>
 #include <unistd.h>
 #include <fstream>
+#include <iostream>
 
 #include "client.h"
 #include "apimanager.h"
@@ -280,6 +281,12 @@ bool ApiManager::deleteRecord(const std::string &recId)
   param["recordId"] = recId;
 
   return isSuccess(apiCall("delete-record", param));
+}
+
+bool ApiManager::keepAlive()
+{
+    ApiParamMap param;
+    return isSuccess(apiCall("keepalive", param));
 }
 
 std::string ApiManager::urlEncode(const std::string &str)

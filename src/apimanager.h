@@ -46,6 +46,7 @@ public:
   bool addTimer(const std::string &eventId);
   std::string getEventId(const std::string &channel, time_t start, time_t end);
   bool deleteRecord(const std::string &recId);
+  bool keepAlive();
 
 private:
   std::string urlEncode(const std::string &str);

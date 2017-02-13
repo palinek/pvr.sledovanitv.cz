@@ -4,6 +4,7 @@
   <category label="30010">
     <setting id="userName" type="text" label="30000" default=""/>
     <setting id="password" type="text" option="hidden" label="30001" default=""/>
+    <setting id="enableHd" type="bool" label="30002" default="true"/>
   </category>
 
 </settings>

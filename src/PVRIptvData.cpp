@@ -25,6 +25,7 @@
 #include <sstream>
 #include <string>
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <json/json.h>
 
@@ -33,6 +34,8 @@
 
 using namespace std;
 using namespace ADDON;
+
+extern bool g_bHdEnabled;
 
 PVRIptvData::PVRIptvData(void)
 {
@@ -49,34 +52,51 @@ PVRIptvData::PVRIptvData(void)
     XBMC->QueueNotification(QUEUE_INFO, "%d channels loaded.", m_channels.size());
   }
 
-  m_bUpdating = false;
-  //CreateThread();
-
+  m_bKeepAlive = true;
+  CreateThread();
 }
 
 void *PVRIptvData::Process(void)
 {
-  XBMC->Log(LOG_DEBUG, "UpdateProcess:: thread started");
+  XBMC->Log(LOG_DEBUG, "keepAlive:: thread started");
   unsigned int counter = 0;
-  while (m_bUpdating)
+  unsigned int counterPvr = 0;
+  while (m_bKeepAlive)
   {
-    if (counter >= 300000)
+    if (counter >= 20000)
     {
       counter = 0;
+      if (!m_manager.keepAlive())
+      {
+        ThreadSafeLogin();
+      }
+    }
+
+    if (counterPvr >= 30000)
+    {
+      counterPvr = 0;
       PVR->TriggerRecordingUpdate();
-      Sleep(2000);
       PVR->TriggerTimerUpdate();
     }
+
     counter += 1000;
+    counterPvr += 1000;
     Sleep(1000);
   }
-  XBMC->Log(LOG_DEBUG, "UpdateProcess:: thread stopped");
+  XBMC->Log(LOG_DEBUG, "keepAlive:: thread stopped");
   return NULL;
+}
+
+void PVRIptvData::ThreadSafeLogin()
+{
+  P8PLATFORM::CLockObject critical(m_mutexLogin);
+
+  m_manager.login();
 }
 
 PVRIptvData::~PVRIptvData(void)
 {
-  m_bUpdating = false;
+  m_bKeepAlive = false;
   if (IsRunning())
   {
     StopThread();
@@ -96,6 +116,11 @@ bool PVRIptvData::LoadEPG(time_t iStart, time_t iEnd)
     XBMC->Log(LOG_NOTICE, "Not logged in. EPG not loaded.");
     m_bEGPLoaded = true;
     return false;
+  }
+
+  if (!m_manager.keepAlive())
+  {
+    ThreadSafeLogin();
   }
 
   std::string epgString = m_manager.getEpg(); // TODO: add time range
@@ -287,8 +312,13 @@ bool PVRIptvData::LoadPlayList(void)
     XBMC->Log(LOG_DEBUG, "Channel %s, URL: %s", iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
     
     std::string strUrl = iptvchan.strStreamURL;
-    size_t qIndex = strUrl.find("quality");
-    strUrl.replace(strUrl.begin() + qIndex, strUrl.end(), "quality=40");
+
+    if (g_bHdEnabled)
+    {
+      size_t qIndex = strUrl.find("quality");
+      strUrl.replace(strUrl.begin() + qIndex, strUrl.end(), "quality=40");
+    }
+
     iptvchan.strStreamURL = strUrl;
     iptvchan.iUniqueId = GetChannelId(iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
     iptvchan.iChannelNumber = i + 1;
@@ -420,6 +450,7 @@ PVR_ERROR PVRIptvData::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHA
 
 PVR_ERROR PVRIptvData::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
+  XBMC->Log(LOG_DEBUG, "Read EPG for channel %s", channel.strChannelName);
   vector<PVRIptvChannel>::iterator myChannel;
   for (myChannel = m_channels.begin(); myChannel < m_channels.end(); myChannel++)
   {
@@ -428,6 +459,7 @@ PVR_ERROR PVRIptvData::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &
       continue;
     }
 
+    XBMC->Log(LOG_DEBUG, "Read EPG last start %d, start %d, last end %d, end %d", m_iLastStart, iStart, m_iLastEnd, iEnd);
     if (!m_bEGPLoaded || iStart > m_iLastStart || iEnd > m_iLastEnd) 
     {
       if (LoadEPG(iStart, iEnd))
@@ -440,6 +472,7 @@ PVR_ERROR PVRIptvData::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &
     PVRIptvEpgChannel *epg;
     if ((epg = FindEpgForChannel(*myChannel)) == NULL || epg->epg.size() == 0)
     {
+      XBMC->Log(LOG_DEBUG, "EPG not found");
       return PVR_ERROR_NO_ERROR;
     }
 

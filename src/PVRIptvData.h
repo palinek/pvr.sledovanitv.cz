@@ -150,7 +150,7 @@ protected:
 
 private:
   bool                              m_bEGPLoaded;
-  bool                              m_bUpdating;
+  bool                              m_bKeepAlive;
   bool                              m_bIsPlaying;
   int                               m_iLastStart;
   int                               m_iLastEnd;
@@ -160,6 +160,8 @@ private:
   std::vector<PVRIptvRecording>     m_recordings;
   std::vector<PVRIptvTimer>         m_timers;
   P8PLATFORM::CMutex                m_mutex;
+  P8PLATFORM::CMutex                m_mutexLogin;
+  void ThreadSafeLogin();
 
   ApiManager                        m_manager;
 };

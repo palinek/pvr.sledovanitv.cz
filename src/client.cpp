@@ -60,6 +60,7 @@ CHelper_libXBMC_pvr   *PVR  = NULL;
 //std::string g_strLogoPath   = "";
 std::string g_strUserName	= "";
 std::string g_strPassword	= "";
+bool g_bHdEnabled = true;
 //int         g_iEPGTimeShift = 0;
 //int         g_iStartNumber  = 1;
 //bool        g_bTSOverride   = true;
@@ -108,6 +109,11 @@ void ADDON_ReadSettings(void)
   if (XBMC->GetSetting("password", buffer))
   {
     g_strPassword = buffer;
+  }
+
+  if (!XBMC->GetSetting("enableHd", &g_bHdEnabled))
+  {
+    g_bHdEnabled = true;
   }
 }
 
@@ -210,6 +216,11 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
 
 void ADDON_Stop()
 {
+  if (m_data != NULL)
+  {
+    delete m_data;
+    m_data = NULL;
+  }
 }
 
 void ADDON_FreeSettings()
