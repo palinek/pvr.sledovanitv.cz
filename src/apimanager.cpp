@@ -204,7 +204,7 @@ bool ApiManager::login()
 std::string ApiManager::getPlaylist()
 {
   ApiParamMap params;
-  params["format"] = "m3u8";
+  params["format"] = "androidtv";
   return apiCall("playlist", params);
 }
 

@@ -60,11 +60,11 @@ void *PVRIptvData::Process(void)
 {
   XBMC->Log(LOG_DEBUG, "keepAlive:: thread started");
   unsigned int counter = 0;
-  unsigned int counterPvr = 0;
   while (m_bKeepAlive)
   {
     if (counter >= 20000)
     {
+      XBMC->Log(LOG_DEBUG, "keepAlive:: trigger");
       counter = 0;
       if (!m_manager.keepAlive())
       {
@@ -72,15 +72,7 @@ void *PVRIptvData::Process(void)
       }
     }
 
-    if (counterPvr >= 30000)
-    {
-      counterPvr = 0;
-      PVR->TriggerRecordingUpdate();
-      PVR->TriggerTimerUpdate();
-    }
-
     counter += 1000;
-    counterPvr += 1000;
     Sleep(1000);
   }
   XBMC->Log(LOG_DEBUG, "keepAlive:: thread stopped");
