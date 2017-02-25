@@ -387,6 +387,8 @@ bool PVRIptvData::GetRecording(const PVR_RECORDING &recording, PVRIptvRecording 
       //myRecording.duration =
     }
   }
+
+  return true;
 }
 
 int PVRIptvData::GetChannelGroupsAmount(void)

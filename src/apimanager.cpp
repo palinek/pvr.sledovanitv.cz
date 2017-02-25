@@ -23,7 +23,11 @@
  */
 
 #include <json/json.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <unistd.h>
+#endif
 #include <fstream>
 #include <iostream>
 
@@ -112,6 +116,7 @@ bool ApiManager::pairDevice()
   {
     ApiParamMap params;
 
+#ifndef _WIN32
     char hostName[256];
     gethostname(hostName, 256);
 
@@ -121,6 +126,10 @@ bool ApiManager::pairDevice()
     {
       std::getline(ifs, macAddr);
     }
+#else
+    char *hostName = "Kodi Win32";
+    std::string macAddr = "11:22:33:44";
+#endif
 
     params["username"] = g_strUserName;
     params["password"] = g_strPassword;
