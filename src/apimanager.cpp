@@ -133,7 +133,7 @@ bool ApiManager::pairDevice()
 
     params["username"] = g_strUserName;
     params["password"] = g_strPassword;
-    params["type"] = "xbmc";
+    params["type"] = "androidtv";
     params["product"] = hostName;
     params["serial"] = macAddr;
 
