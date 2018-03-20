@@ -28,6 +28,8 @@
 #include "client.h"
 #include "p8-platform/threads/threads.h"
 #include "apimanager.h"
+#include <mutex>
+#include <memory>
 
 struct PVRIptvEpgEntry
 {
@@ -42,13 +44,16 @@ struct PVRIptvEpgEntry
   std::string strPlot;
   std::string strIconPath;
   std::string strGenreString;
+  std::string strEventId;
+  std::string strStreamURL;
+  bool availableTimeshift;
 };
 
 struct PVRIptvEpgChannel
 {
   std::string                  strId;
   std::string                  strName;
-  std::vector<PVRIptvEpgEntry> epg;
+  std::map<time_t, PVRIptvEpgEntry> epg;
 };
 
 struct PVRIptvChannel
@@ -84,6 +89,7 @@ struct PVRIptvRecording
   std::string		strChannelName;
   time_t		startTime;
   int			duration;
+  std::string strDirectory;
 };
 
 struct PVRIptvTimer
@@ -106,62 +112,65 @@ struct PVRIptvTimer
   int             iGenreSubType;
 };
 
+typedef std::vector<PVRIptvChannelGroup> group_container_t;
+typedef std::vector<PVRIptvChannel> channel_container_t;
+typedef std::map<std::string, PVRIptvEpgChannel> epg_container_t;
+typedef std::vector<PVRIptvRecording> recording_container_t;
+typedef std::vector<PVRIptvTimer> timer_container_t;
+
+class DataContainer
+{
+public:
+};
+
 class PVRIptvData : public P8PLATFORM::CThread
 {
 public:
   PVRIptvData(void);
   virtual ~PVRIptvData(void);
 
-  virtual int       GetChannelsAmount(void);
-  virtual PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
-  virtual bool      GetChannel(const PVR_CHANNEL &channel, PVRIptvChannel &myChannel);
-  virtual bool      GetRecording(const PVR_RECORDING &recording, PVRIptvRecording &myRecording);
-  virtual int       GetChannelGroupsAmount(void);
-  virtual PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio);
-  virtual PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
-  virtual PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
-  virtual int       GetRecordingsAmount();
-  virtual PVR_ERROR GetRecordings(ADDON_HANDLE handle);
-  virtual int       GetTimersAmount();
-  virtual PVR_ERROR GetTimers(ADDON_HANDLE handle);
-  virtual PVR_ERROR AddTimer(const PVR_TIMER &timer);
-  virtual PVR_ERROR DeleteRecord(const std::string &strRecordId);
-  virtual PVR_ERROR DeleteRecord(int iRecordId);
-  virtual void      SetPlaying(bool playing);
+  int GetChannelsAmount(void);
+  PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
+  PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
+  int GetChannelGroupsAmount(void);
+  PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio);
+  PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
+  int GetRecordingsAmount();
+  PVR_ERROR GetRecordings(ADDON_HANDLE handle);
+  void GetRecordingsUrls();
+  int GetTimersAmount();
+  PVR_ERROR GetTimers(ADDON_HANDLE handle);
+  PVR_ERROR AddTimer(const PVR_TIMER &timer);
+  PVR_ERROR DeleteRecord(const std::string &strRecordId);
+  PVR_ERROR DeleteRecord(int iRecordId);
 
 protected:
-  virtual bool                 LoadPlayList(void);
-  virtual bool                 LoadEPG(time_t iStart, time_t iEnd);
-  virtual bool                 LoadRecordings();
-  virtual int                  GetFileContents(CStdString& url, std::string &strContent);
-  virtual PVRIptvChannel      *FindChannel(const std::string &strId, const std::string &strName);
-  virtual PVRIptvChannel      *FindChannel(int iChannelUid);
-  virtual PVRIptvChannelGroup *FindGroup(const std::string &strName);
-  virtual PVRIptvEpgChannel   *FindEpg(const std::string &strId);
-  virtual std::string          FindTvShowId(const PVRIptvChannel &channel, time_t iStart, time_t iEnd);
-  virtual PVRIptvEpgChannel   *FindEpgForChannel(PVRIptvChannel &channel);
-  virtual int                  ParseDateTime(std::string strDate);
-  virtual int                  GetCachedFileContents(const std::string &strCachedName, const std::string &strFilePath, 
-                                                     std::string &strContent, const bool bUseCache = false);
-  virtual int                  GetChannelId(const char * strChannelName, const char * strStreamUrl);
+  static int ParseDateTime(std::string strDate);
 
 protected:
-  virtual void *Process(void);
+  bool LoadPlayList(void);
+  bool LoadEPG(time_t iStart, bool bSmallStep);
+  bool LoadRecordings();
+  void LoadRecordingsJob();
+  void SetLoadRecordings();
+
+protected:
+  virtual void *Process(void) override;
 
 private:
   bool                              m_bEGPLoaded;
   bool                              m_bKeepAlive;
-  bool                              m_bIsPlaying;
+  bool                              m_bLoadRecordings;
   int                               m_iLastStart;
   int                               m_iLastEnd;
-  std::vector<PVRIptvChannelGroup>  m_groups;
-  std::vector<PVRIptvChannel>       m_channels;
-  std::vector<PVRIptvEpgChannel>    m_epg;
-  std::vector<PVRIptvRecording>     m_recordings;
-  std::vector<PVRIptvTimer>         m_timers;
-  P8PLATFORM::CMutex                m_mutex;
-  P8PLATFORM::CMutex                m_mutexLogin;
-  void ThreadSafeLogin();
+  std::mutex                        m_mutex;
+
+  // stored data from backend (used by multiple threads...)
+  std::shared_ptr<const group_container_t> m_groups;
+  std::shared_ptr<const channel_container_t> m_channels;
+  std::shared_ptr<const epg_container_t> m_epg;
+  std::shared_ptr<const recording_container_t> m_recordings;
+  std::shared_ptr<const timer_container_t> m_timers;
 
   ApiManager                        m_manager;
 };
