@@ -38,7 +38,7 @@
 using namespace ADDON;
 
 const std::string ApiManager::API_URL = "http://sledovanitv.cz/api/";
-const std::string ApiManager::LOG_PREFIX = "sledovanitv.cz - ";
+const std::string ApiManager::TIMESHIFTINFO_URL = "http://sledovanitv.cz/playback/timeshiftInfo";
 const std::string ApiManager::PAIR_FILE = "pairinfo";
 
 /* Converts a hex character to its integer value */
@@ -71,17 +71,27 @@ char *url_encode(const char *str)
   return buf;
 }
 
+static std::string formatTime(time_t t)
+{
+  std::string buf(17, ' ');
+  std::strftime(const_cast<char *>(buf.data()), buf.size(), "%Y-%m-%d %H:%M", std::localtime(&t));
+  return buf;
+}
+
 ApiManager::ApiManager()
+  : m_sessionId{std::make_shared<std::string>()}
 {
   XBMC->Log(LOG_NOTICE, "Loading ApiManager");
 }
 
-std::string ApiManager::apiCall(const std::string &function, ApiParamMap paramsMap)
+std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar)
 {
-  std::string url = API_URL + function + "?" + buildQueryString(paramsMap);
+  std::string url = urlPath;
+  url += '?';
+  url += buildQueryString(paramsMap, putSessionVar);
   std::string response;
 
-  void *fh = XBMC->OpenFile(url.c_str(), 0);
+  void *fh = XBMC->OpenFile(url.c_str(), XFILE::READ_NO_CACHE);
   if (fh)
   {
     char buffer[1024];
@@ -97,15 +107,33 @@ std::string ApiManager::apiCall(const std::string &function, ApiParamMap paramsM
   return response;
 }
 
-bool ApiManager::isSuccess(const std::string &response)
+std::string ApiManager::apiCall(const std::string &function, const ApiParamMap & paramsMap)
+{
+  std::string url = API_URL;
+  url += function;
+  return call(url, paramsMap, true);
+}
+
+bool ApiManager::isSuccess(const std::string &response, Json::Value & root)
 {
   Json::Reader reader;
-  Json::Value root;
 
   if (reader.parse(response, root))
   {
-    return root.get("status", 0).asInt() == 1;
+    bool success = root.get("status", 0).asInt() == 1;
+    if (!success)
+      XBMC->Log(LOG_ERROR, "Error indicated in response. status: %s, error: %s", root.get("status", "0").asString().c_str(), root.get("error", "").asString().c_str());
+    return success;
   }
+
+  XBMC->Log(LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", response.c_str(), 1024, reader.getFormatedErrorMessages().c_str());
+  return false;
+}
+
+bool ApiManager::isSuccess(const std::string &response)
+{
+  Json::Value root;
+  return isSuccess(response, root);
 }
 
 bool ApiManager::pairDevice()
@@ -140,10 +168,9 @@ bool ApiManager::pairDevice()
     pairJson = apiCall("create-pairing", params);
   }
 
-  Json::Reader reader;
   Json::Value root;
 
-  if (reader.parse(pairJson, root))
+  if (isSuccess(pairJson, root))
   {
     int devId = root.get("deviceId", 0).asInt();
     std::string passwd = root.get("password", "").asString();
@@ -167,7 +194,7 @@ bool ApiManager::pairDevice()
   }
   else
   {
-    XBMC->Log(LOG_ERROR, "Error parsing pairing response. Response is: %s, reader error: %s", pairJson.c_str(), reader.getFormatedErrorMessages().c_str());
+    XBMC->Log(LOG_ERROR, "Error in pairing response.");
   }
 
   return false;
@@ -188,52 +215,56 @@ bool ApiManager::login()
   param["deviceId"] = m_deviceId;
   param["password"] = m_password;
 
-  std::string resp = apiCall("device-login", param);
-
-  Json::Reader reader;
   Json::Value root;
 
-  if (reader.parse(resp, root))
+  auto new_session_id = std::make_shared<std::string>();
+  if (isSuccess(apiCall("device-login", param), root))
   {
-    m_sessionId = root.get("PHPSESSID", "").asString();
+    *new_session_id = root.get("PHPSESSID", "").asString();
 
-    if (m_sessionId.empty())
+    if (new_session_id->empty())
     {
       XBMC->Log(LOG_ERROR, "Cannot perform device login");
     }
     else
     {
-      XBMC->Log(LOG_INFO, "Device logged in. Session ID: %s", m_sessionId.c_str());
+      XBMC->Log(LOG_INFO, "Device logged in. Session ID: %s", new_session_id->c_str());
     }
   }
 
-  return !m_sessionId.empty();
+  const bool success = !new_session_id->empty();
+
+  m_sessionId = new_session_id;
+
+  return success;
 }
 
-std::string ApiManager::getPlaylist()
+bool ApiManager::getPlaylist(Json::Value & root)
 {
   ApiParamMap params;
   params["format"] = "androidtv";
-  return apiCall("playlist", params);
+  return isSuccess(apiCall("playlist", params), root);
 }
 
-std::string ApiManager::getStreamQualities()
+bool ApiManager::getStreamQualities(Json::Value & root)
 {
-    return apiCall("get-stream-qualities", ApiParamMap());
+    return isSuccess(apiCall("get-stream-qualities", ApiParamMap()), root);
 }
 
-std::string ApiManager::getEpg()
+bool ApiManager::getEpg(time_t start, bool smallDuration, Json::Value & root)
 {
   ApiParamMap params;
 
+  params["time"] = formatTime(start);
+  params["duration"] = smallDuration ? "60" : "1439";
   params["detail"] = "1";
 
-  return apiCall("epg", params);
+  return isSuccess(apiCall("epg", params), root);
 }
 
-std::string ApiManager::getPvr()
+bool ApiManager::getPvr(Json::Value & root)
 {
-  return apiCall("get-pvr", ApiParamMap());
+  return isSuccess(apiCall("get-pvr", ApiParamMap()), root);
 }
 
 std::string ApiManager::getRecordingUrl(const std::string &recId)
@@ -242,17 +273,34 @@ std::string ApiManager::getRecordingUrl(const std::string &recId)
   param["recordId"] = recId;
   param["format"] = "m3u8";
 
-  std::string resp = apiCall("record-timeshift", param);
-
-  Json::Reader reader;
   Json::Value root;
 
-  if (reader.parse(resp, root))
+  if (isSuccess(apiCall("record-timeshift", param), root))
   {
     return root.get("url", "").asString();
   }
 
   return "";
+}
+
+bool ApiManager::getTimeShiftInfo(const std::string &eventId
+    , std::string & streamUrl
+    , int & duration)
+{
+  ApiParamMap param;
+  param["eventId"] = eventId;
+  param["format"] = "m3u8";
+
+  Json::Value root;
+
+  if (isSuccess(apiCall("event-timeshift", param), root))
+  {
+    streamUrl = root.get("url", "").asString();
+    duration = root.get("duration", 0).asInt();
+    return true;
+  }
+
+  return false;
 }
 
 bool ApiManager::addTimer(const std::string &eventId)
@@ -261,27 +309,6 @@ bool ApiManager::addTimer(const std::string &eventId)
   param["eventId"] = eventId;
 
   return isSuccess(apiCall("record-event", param));
-}
-
-std::string ApiManager::getEventId(const std::string &channel, time_t start, time_t end)
-{
-  char bufStart[256];
-  std::string strStart;
-  char bufDuration[10];
-  std::string strDuration;
-  ApiParamMap param;
-
-  start += 60;
-  std::strftime(bufStart, sizeof(bufStart), "%Y-%m-%d %H:%M", std::localtime(&start));
-  sprintf(bufDuration, "%d", ((end - start) - 60)/60);
-  strStart = bufStart;
-  strDuration = bufDuration;
-
-  param["time"] = strStart;
-  param["duration"] = strDuration;
-  param["channels"] = channel;
-
-  return apiCall("epg", param);
 }
 
 bool ApiManager::deleteRecord(const std::string &recId)
@@ -306,21 +333,25 @@ std::string ApiManager::urlEncode(const std::string &str)
   return strOut;
 }
 
-std::string ApiManager::buildQueryString(ApiParamMap paramMap)
+std::string ApiManager::buildQueryString(const ApiParamMap & paramMap, bool putSessionVar)
 {
-  std::string strOut = m_sessionId;
-
-  for (ApiParamMap::iterator i = paramMap.begin(); i != paramMap.end(); i++)
+  XBMC->Log(LOG_DEBUG, "%s - size %d", __FUNCTION__, paramMap.size());
+  std::string strOut;
+  for (const auto & param : paramMap)
   {
-    std::string key(i->first);
-
     if (!strOut.empty())
     {
       strOut += "&";
     }
 
-    strOut += key + "=" + urlEncode(paramMap.at(key));
+    strOut += param.first + "=" + urlEncode(param.second);
   }
+
+  std::shared_ptr<const std::string> session_id = m_sessionId;
+
+  if (putSessionVar)
+    strOut += "&PHPSESSID=";
+  strOut += *session_id;
 
   return strOut;
 }

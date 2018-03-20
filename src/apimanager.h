@@ -27,8 +27,14 @@
 
 #include <string>
 #include <map>
+#include <memory>
 
 typedef std::map<std::string, std::string> ApiParamMap;
+
+namespace Json
+{
+  class Value;
+}
 
 class ApiManager
 {
@@ -37,31 +43,34 @@ public:
 
   bool pairDevice();
   bool login();
-  bool isLoggedIn() { return !m_sessionId.empty(); }
-  std::string getPlaylist();
-  std::string getStreamQualities();
-  std::string getEpg(); //TODO timerange
-  std::string getPvr();
+  bool getPlaylist(Json::Value & root);
+  bool getStreamQualities(Json::Value & root);
+  bool getEpg(time_t start, bool smallDuration, Json::Value & root);
+  bool getPvr(Json::Value & root);
   std::string getRecordingUrl(const std::string &recId);
+  bool getTimeShiftInfo(const std::string &eventId
+      , std::string & streamUrl
+      , int & duration);
   bool addTimer(const std::string &eventId);
-  std::string getEventId(const std::string &channel, time_t start, time_t end);
   bool deleteRecord(const std::string &recId);
   bool keepAlive();
 
 private:
   std::string urlEncode(const std::string &str);
-  std::string buildQueryString(ApiParamMap paramMap);
+  std::string buildQueryString(const ApiParamMap & paramMap, bool putSessionVar);
   std::string readPairFile();
   void createPairFile(const std::string &content);
-  std::string apiCall(const std::string &function, ApiParamMap paramsMap);
+  std::string call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar);
+  std::string apiCall(const std::string &function, const ApiParamMap & paramsMap);
+  bool isSuccess(const std::string &response, Json::Value & root);
   bool isSuccess(const std::string &response);
 
   static const std::string API_URL;
-  static const std::string LOG_PREFIX;
+  static const std::string TIMESHIFTINFO_URL;
   static const std::string PAIR_FILE;
   std::string m_deviceId;
   std::string m_password;
-  std::string m_sessionId;
+  std::shared_ptr<const std::string> m_sessionId;
 };
 
 #endif // APIMANAGER_H
