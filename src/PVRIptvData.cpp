@@ -222,33 +222,6 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
         XBMC->Log(LOG_DEBUG, "Loading TV show: %s - %s, start=%s", strChId.c_str(), iptventry.strTitle.c_str(), epgEntry.get("startTime", "").asString().c_str());
 
         epgChannel.epg[iptventry.startTime] = std::move(iptventry);
-
-#if 0
-        //create also the timeshift recording entry
-        //TODO:
-        if (iptventry.availableTimeshift)
-        {
-          PVRIptvRecording iptvrecording;
-          if (m_manager.getTimeShiftInfo(iptventry.strEventId, iptvrecording.strStreamUrl, iptvrecording.duration))
-          {
-            std::string title = "ts - ";
-            title += epgChannel.strId;
-            std::string directory = title;
-            title += epgEntry.get("startTime", "").asString();
-            title += " - ";
-            title += iptventry.strTitle;
-
-            iptvrecording.strRecordId = iptventry.strEventId;
-            iptvrecording.strTitle = title;
-            iptvrecording.strDirectory = directory;
-            iptvrecording.strChannelName = iptvchannel->strChannelName;
-            iptvrecording.startTime = iptventry.startTime;
-            iptvrecording.strPlotOutline = iptventry.strPlot;
-            iptvrecording.duration = iptventry.endTime - iptventry.startTime;
-            m_recordingsTs.push_back(std::move(iptvrecording));
-          }
-        }
-#endif
       }
     }
 
@@ -631,16 +604,28 @@ int PVRIptvData::ParseDateTime(std::string strDate)
 
 int PVRIptvData::GetRecordingsAmount()
 {
-  const auto recordings = m_recordings;
-  return recordings->size();
+  decltype (m_recordings) recordings;
+  decltype (m_virtualTimeshiftRecording) virtual_recording;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    recordings = m_recordings;
+    virtual_recording = m_virtualTimeshiftRecording;
+  }
+  return recordings->size() + (virtual_recording ? 1 : 0);
 }
 
 PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
 {
-  const auto recordings = m_recordings;
+  decltype (m_recordings) recordings;
+  decltype (m_virtualTimeshiftRecording) virtual_recording;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    recordings = m_recordings;
+    virtual_recording = m_virtualTimeshiftRecording;
+  }
 
   std::vector<PVR_RECORDING> xbmc_records;
-  for (const auto & rec : *recordings)
+  auto insert_lambda = [&xbmc_records] (const PVRIptvRecording & rec)
   {
     PVR_RECORDING xbmcRecord;
     memset(&xbmcRecord, 0, sizeof(PVR_RECORDING));
@@ -656,31 +641,17 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
     xbmcRecord.iDuration = rec.duration;
 
     xbmc_records.push_back(std::move(xbmcRecord));
-  }
+  };
+
+  std::for_each(recordings->cbegin(), recordings->cend(), insert_lambda);
+
+  if (virtual_recording)
+    insert_lambda(*virtual_recording);
 
   for (const auto & xbmcRecord : xbmc_records)
   {
     PVR->TransferRecordingEntry(handle, &xbmcRecord);
   }
-#if 0
-  for (const auto & rec : m_recordingsTs)
-  {
-    PVR_RECORDING xbmcRecord;
-    memset(&xbmcRecord, 0, sizeof(PVR_RECORDING));
-
-    strncpy(xbmcRecord.strRecordingId, rec.strRecordId.c_str(), sizeof(xbmcRecord.strRecordingId) - 1);
-    strncpy(xbmcRecord.strTitle, rec.strTitle.c_str(), sizeof(xbmcRecord.strTitle) - 1);
-    strncpy(xbmcRecord.strDirectory, rec.strDirectory.c_str(), sizeof(xbmcRecord.strDirectory) - 1);
-    strncpy(xbmcRecord.strStreamURL, rec.strStreamUrl.c_str(), sizeof(xbmcRecord.strStreamURL) - 1);
-    strncpy(xbmcRecord.strChannelName, rec.strChannelName.c_str(), sizeof(xbmcRecord.strChannelName) - 1);
-    xbmcRecord.recordingTime = rec.startTime;
-    strncpy(xbmcRecord.strPlotOutline, rec.strPlotOutline.c_str(), sizeof(xbmcRecord.strPlotOutline) - 1);
-    strncpy(xbmcRecord.strPlot, rec.strPlotOutline.c_str(), sizeof(xbmcRecord.strPlot) - 1);
-    xbmcRecord.iDuration = rec.duration;
-
-    PVR->TransferRecordingEntry(handle, &xbmcRecord);
-  }
-#endif
 
   return PVR_ERROR_NO_ERROR;
 }
@@ -720,17 +691,18 @@ PVR_ERROR PVRIptvData::GetTimers(ADDON_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer)
+PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer, bool virtualTimeshift)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
+  decltype (m_virtualTimeshiftRecording) virtual_recording;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     channels = m_channels;
     epg = m_epg;
+    virtual_recording = m_virtualTimeshiftRecording;
   }
 
-  string strEventId;
   const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&timer] (const PVRIptvChannel & ch) { return ch.iUniqueId == timer.iClientChannelUid; });
   if (channel_i == channels->cend())
   {
@@ -750,12 +722,41 @@ PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer)
     XBMC->Log(LOG_ERROR, "%s - event not found", __FUNCTION__);
     return PVR_ERROR_SERVER_ERROR;
   }
-  strEventId = epg_i->second.strEventId;
 
-  if (m_manager.addTimer(strEventId))
+  const PVRIptvEpgEntry & epg_entry = epg_i->second;
+  if (virtualTimeshift)
   {
-    SetLoadRecordings();
-    return PVR_ERROR_NO_ERROR;
+    // create the timeshift "virtual" recording entry
+    if (epg_entry.availableTimeshift)
+    {
+      std::shared_ptr<PVRIptvRecording> recording = std::make_shared<PVRIptvRecording>();
+      if (m_manager.getTimeShiftInfo(epg_entry.strEventId, recording->strStreamUrl, recording->duration))
+      {
+        std::string title = "Timeshift - ";
+        title += channel_i->strChannelName;
+        title += " - ";
+        title += epg_entry.strTitle;
+
+        recording->strRecordId = epg_entry.strEventId;
+        recording->strTitle = title;
+        //recording->strDirectory = directory;
+        recording->strChannelName = channel_i->strChannelName;
+        recording->startTime = epg_entry.startTime;
+        recording->strPlotOutline = epg_entry.strPlot;
+        recording->duration = epg_entry.endTime - epg_entry.startTime;
+
+        m_virtualTimeshiftRecording = std::move(recording);
+        PVR->TriggerRecordingUpdate();
+        return PVR_ERROR_NO_ERROR;
+      }
+    }
+  } else
+  {
+    if (m_manager.addTimer(epg_entry.strEventId))
+    {
+      SetLoadRecordings();
+      return PVR_ERROR_NO_ERROR;
+    }
   }
   return PVR_ERROR_SERVER_ERROR;
 }
