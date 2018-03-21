@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="pvr.sledovanitv.cz"
-  version="2.0.2"
+  version="2.1.0"
   name="PVR Sledovanitv.cz"
   provider-name="Josef Rokos">
   <requires>
@@ -10,7 +10,7 @@
   </requires>
   <extension
     point="xbmc.pvrclient"
-    library_linux="pvr.sledovanitv.so.2.0.2"/>
+    library_linux="pvr.sledovanitv.so.2.1.0"/>
   <extension point="xbmc.addon.metadata">
     <summary lang="en">XBMC PVR addon for sledovanitv.cz</summary>
     <summary lang="cs">Rozhraní XBMC pro sledovanitv.cz</summary>
