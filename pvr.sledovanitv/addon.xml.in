@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="pvr.sledovanitv.cz"
-  version="2.0.2"
+  version="2.1.0"
   name="PVR Sledovanitv.cz"
   provider-name="Josef Rokos">
   <requires>
