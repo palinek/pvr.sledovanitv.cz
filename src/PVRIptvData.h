@@ -140,7 +140,7 @@ public:
   void GetRecordingsUrls();
   int GetTimersAmount();
   PVR_ERROR GetTimers(ADDON_HANDLE handle);
-  PVR_ERROR AddTimer(const PVR_TIMER &timer);
+  PVR_ERROR AddTimer(const PVR_TIMER &timer, bool virtualTimeshift);
   PVR_ERROR DeleteRecord(const std::string &strRecordId);
   PVR_ERROR DeleteRecord(int iRecordId);
 
@@ -170,6 +170,7 @@ private:
   std::shared_ptr<const channel_container_t> m_channels;
   std::shared_ptr<const epg_container_t> m_epg;
   std::shared_ptr<const recording_container_t> m_recordings;
+  std::shared_ptr<const PVRIptvRecording> m_virtualTimeshiftRecording;
   std::shared_ptr<const timer_container_t> m_timers;
 
   ApiManager                        m_manager;
