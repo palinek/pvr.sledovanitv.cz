@@ -37,6 +37,8 @@ using namespace ADDON;
 
 extern bool g_bHdEnabled;
 
+const std::string PVRIptvData::VIRTUAL_TIMESHIFT_ID = "VIRTUAL_TIMESHIFT_ID";
+
 PVRIptvData::PVRIptvData(void)
 {
   m_iLastStart    = 0;
@@ -737,7 +739,7 @@ PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer, bool virtualTimeshift)
         title += " - ";
         title += epg_entry.strTitle;
 
-        recording->strRecordId = epg_entry.strEventId;
+        recording->strRecordId = VIRTUAL_TIMESHIFT_ID;
         recording->strTitle = title;
         //recording->strDirectory = directory;
         recording->strChannelName = channel_i->strChannelName;
@@ -763,6 +765,12 @@ PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer, bool virtualTimeshift)
 
 PVR_ERROR PVRIptvData::DeleteRecord(const string &strRecordId)
 {
+  if (strRecordId == VIRTUAL_TIMESHIFT_ID)
+  {
+    m_virtualTimeshiftRecording.reset();
+    PVR->TriggerRecordingUpdate();
+    return PVR_ERROR_NO_ERROR;
+  }
   if (m_manager.deleteRecord(strRecordId))
   {
     SetLoadRecordings();

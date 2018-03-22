@@ -158,6 +158,9 @@ protected:
   virtual void *Process(void) override;
 
 private:
+  static const std::string VIRTUAL_TIMESHIFT_ID;
+
+private:
   bool                              m_bEGPLoaded;
   bool                              m_bKeepAlive;
   bool                              m_bLoadRecordings;
