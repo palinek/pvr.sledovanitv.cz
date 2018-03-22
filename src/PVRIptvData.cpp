@@ -209,14 +209,15 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
       {
         Json::Value epgEntry = epgData[j];
 
+        const time_t start_time = ParseDateTime(epgEntry.get("startTime", "").asString());
         PVRIptvEpgEntry iptventry;
-        iptventry.iBroadcastId = j;
+        ventry.iBroadcastId = start_time; // unique id for channel (even if time_t is wider, int should be enough for short period of time)
         iptventry.iGenreType = 0;
         iptventry.iGenreSubType = 0;
         iptventry.iChannelId = channel_i->iUniqueId;
         iptventry.strTitle = epgEntry.get("title", "").asString();
         iptventry.strPlot = epgEntry.get("description", "").asString();
-        iptventry.startTime = ParseDateTime(epgEntry.get("startTime", "").asString());
+        iptventry.startTime = start_time;
         iptventry.endTime = ParseDateTime(epgEntry.get("endTime", "").asString());
         iptventry.strEventId = epgEntry.get("eventId", "").asString();
         iptventry.availableTimeshift = epgEntry.get("availability", "none").asString() == "timeshift";
@@ -542,7 +543,7 @@ PVR_ERROR PVRIptvData::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &
     channels = m_channels;
   }
   std::vector<EPG_TAG> xbmc_tags;
-  XBMC->Log(LOG_DEBUG, "Read EPG for channel %s", channel.strChannelName);
+  XBMC->Log(LOG_DEBUG, "Read EPG for channel %s, from=%s to=%s", channel.strChannelName, ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(iEnd).c_str());
   const auto myChannel = std::find_if(channels->cbegin(), channels->cend(), [&channel] (const PVRIptvChannel & c) { return c.iUniqueId == channel.iUniqueId; });
   if (myChannel == channels->cend())
   {

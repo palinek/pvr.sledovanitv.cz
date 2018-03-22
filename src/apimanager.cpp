@@ -71,7 +71,7 @@ char *url_encode(const char *str)
   return buf;
 }
 
-static std::string formatTime(time_t t)
+std::string ApiManager::formatTime(time_t t)
 {
   std::string buf(17, ' ');
   std::strftime(const_cast<char *>(buf.data()), buf.size(), "%Y-%m-%d %H:%M", std::localtime(&t));

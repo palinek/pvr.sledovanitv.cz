@@ -39,6 +39,9 @@ namespace Json
 class ApiManager
 {
 public:
+  static std::string formatTime(time_t t);
+
+public:
   ApiManager();
 
   bool pairDevice();

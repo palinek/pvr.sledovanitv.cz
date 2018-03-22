@@ -33,7 +33,7 @@
 
 struct PVRIptvEpgEntry
 {
-  int         iBroadcastId;
+  unsigned    iBroadcastId;
   int         iChannelId;
   int         iGenreType;
   int         iGenreSubType;
