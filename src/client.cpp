@@ -157,7 +157,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 
   ADDON_ReadSettings();
 
-  m_data = new PVRIptvData;
+  m_data = new PVRIptvData(pvrprops->iEpgMaxDays);
   m_CurStatus = ADDON_STATUS_OK;
 
   return m_CurStatus;
@@ -292,6 +292,14 @@ PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time
 {
   if (m_data)
     return m_data->GetEPGForChannel(handle, channel, iStart, iEnd);
+
+  return PVR_ERROR_SERVER_ERROR;
+}
+
+PVR_ERROR SetEPGTimeFrame(int iDays)
+{
+  if (m_data)
+    return m_data->SetEPGTimeFrame(iDays);
 
   return PVR_ERROR_SERVER_ERROR;
 }
@@ -574,7 +582,6 @@ void OnSystemSleep() { }
 void OnSystemWake() { }
 void OnPowerSavingActivated() { }
 void OnPowerSavingDeactivated() { }
-PVR_ERROR SetEPGTimeFrame(int) { return PVR_ERROR_NOT_IMPLEMENTED; }
 bool IsRealTimeStream() { return true; }
 
 }

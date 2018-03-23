@@ -126,12 +126,13 @@ public:
 class PVRIptvData : public P8PLATFORM::CThread
 {
 public:
-  PVRIptvData(void);
+  PVRIptvData(int iEpgMaxDays);
   virtual ~PVRIptvData(void);
 
   int GetChannelsAmount(void);
   PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
   PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
+  PVR_ERROR SetEPGTimeFrame(int iDays);
   int GetChannelGroupsAmount(void);
   PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio);
   PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
@@ -148,8 +149,13 @@ protected:
   static int ParseDateTime(std::string strDate);
 
 protected:
+  bool KeepAlive();
+  void KeepAliveJob();
   bool LoadPlayList(void);
   bool LoadEPG(time_t iStart, bool bSmallStep);
+  void ReleaseUnneededEPG();
+  //! \return true if actual update was performed
+  bool LoadEPGJob();
   bool LoadRecordings();
   void LoadRecordingsJob();
   void SetLoadRecordings();
@@ -161,12 +167,14 @@ private:
   static const std::string VIRTUAL_TIMESHIFT_ID;
 
 private:
-  bool                              m_bEGPLoaded;
   bool                              m_bKeepAlive;
   bool                              m_bLoadRecordings;
-  int                               m_iLastStart;
-  int                               m_iLastEnd;
   std::mutex                        m_mutex;
+  // stored data used only by "job" thread
+  bool m_bEGPLoaded;
+  time_t m_iLastStart;
+  time_t m_iLastEnd;
+  time_t m_epgLastFullRefresh;
 
   // stored data from backend (used by multiple threads...)
   std::shared_ptr<const group_container_t> m_groups;
@@ -175,6 +183,9 @@ private:
   std::shared_ptr<const recording_container_t> m_recordings;
   std::shared_ptr<const PVRIptvRecording> m_virtualTimeshiftRecording;
   std::shared_ptr<const timer_container_t> m_timers;
+  time_t m_epgMinTime;
+  time_t m_epgMaxTime;
+  int m_epgMaxDays;
 
   ApiManager                        m_manager;
 };
