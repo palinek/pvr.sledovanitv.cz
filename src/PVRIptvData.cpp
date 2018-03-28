@@ -194,7 +194,7 @@ void PVRIptvData::ReleaseUnneededEPG()
         (*epg_copy)[epg_channel.first] = epg_channel.second;
     }
 
-    m_epg = epg_copy;
+    m_epg = std::move(epg_copy);
   }
 
   // narrow the loaded time info (if needed)
@@ -525,6 +525,7 @@ bool PVRIptvData::LoadPlayList(void)
   XBMC->Log(LOG_DEBUG, "Stream qualities: %s", qualities.c_str());
   */
 
+  //channels
   auto new_channels = std::make_shared<channel_container_t>();
   Json::Value channels = root["channels"];
   for (unsigned int i = 0; i < channels.size(); i++)
@@ -534,6 +535,7 @@ bool PVRIptvData::LoadPlayList(void)
 
     iptvchan.strTvgId = channel.get("id", "").asString();
     iptvchan.strChannelName = channel.get("name", "").asString();
+    iptvchan.strGroupId = channel.get("group", "").asString();
     iptvchan.strStreamURL = channel.get("url", "").asString();
 
     XBMC->Log(LOG_DEBUG, "Channel %s, URL: %s", iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
@@ -555,11 +557,33 @@ bool PVRIptvData::LoadPlayList(void)
     new_channels->push_back(iptvchan);
   }
 
+  auto new_groups = std::make_shared<group_container_t>();
+  Json::Value groups = root["groups"];
+  for (const auto & group_id : groups.getMemberNames())
+  {
+    PVRIptvChannelGroup group;
+    group.bRadio = false; // currently there is no way to distinguish group types in the returned json
+    group.strGroupId = group_id;
+    group.strGroupName = groups[group_id].asString();
+    for (const auto & channel : *new_channels)
+    {
+      if (channel.strGroupId == group_id)
+        group.members.push_back(channel.iUniqueId);
+    }
+    new_groups->push_back(std::move(group));
+  }
+
   XBMC->Log(LOG_NOTICE, "Loaded %d channels.", new_channels->size());
   XBMC->QueueNotification(QUEUE_INFO, "%d channels loaded.", new_channels->size());
 
-  m_channels = std::move(new_channels);
+
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    m_channels = std::move(new_channels);
+    m_groups = std::move(new_groups);
+  }
   PVR->TriggerChannelUpdate();
+  PVR->TriggerChannelGroupsUpdate();
 
   return true;
 }
@@ -615,6 +639,8 @@ int PVRIptvData::GetChannelGroupsAmount(void)
 PVR_ERROR PVRIptvData::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
   auto groups = m_groups;
+  if (groups->empty())
+    return PVR_ERROR_SERVER_TIMEOUT;
 
   std::vector<PVR_CHANNEL_GROUP> xbmc_groups;
   for (const auto & group : *groups)

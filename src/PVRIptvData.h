@@ -69,12 +69,13 @@ struct PVRIptvChannel
   std::string strTvgId;
   std::string strTvgName;
   std::string strTvgLogo;
+  std::string strGroupId;
 };
 
 struct PVRIptvChannelGroup
 {
   bool              bRadio;
-  int               iGroupId;
+  std::string       strGroupId;
   std::string       strGroupName;
   std::vector<int>  members;
 };
