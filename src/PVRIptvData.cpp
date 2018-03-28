@@ -55,6 +55,9 @@ PVRIptvData::PVRIptvData(int iEpgMaxDays)
   m_recordings = std::make_shared<recording_container_t>();
   m_timers = std::make_shared<timer_container_t>();
 
+  m_recordingAvailableDuration = 0;
+  m_recordingRecordedDuration = 0;
+
   m_epgMinTime = time(nullptr);
   m_epgMaxTime = m_epgMinTime;
   m_epgMaxDays = iEpgMaxDays;
@@ -394,6 +397,8 @@ bool PVRIptvData::LoadRecordings()
 
   auto new_recordings = std::make_shared<recording_container_t>();
   auto new_timers = std::make_shared<timer_container_t>();
+  long long available_duration = 0;
+  long long recorded_duration = 0;
 
   Json::Value root;
 
@@ -402,6 +407,9 @@ bool PVRIptvData::LoadRecordings()
     XBMC->Log(LOG_NOTICE, "Cannot parse recordings.");
     return false;
   }
+
+  available_duration = root["summary"].get("availableDuration", 0).asInt() / 60 * 1024; //report minutes as MB
+  recorded_duration = root["summary"].get("recordedDuration", 0).asInt() / 60 * 1024;
 
   Json::Value records = root["records"];
   for (unsigned int i = 0; i < records.size(); i++)
@@ -491,7 +499,6 @@ bool PVRIptvData::LoadRecordings()
       break;
     }
   }
-  if (changed_r || changed_t)
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     if (changed_r)
@@ -505,6 +512,8 @@ bool PVRIptvData::LoadRecordings()
       m_timers = std::move(new_timers);
       PVR->TriggerTimerUpdate();
     }
+    m_recordingAvailableDuration = available_duration;
+    m_recordingRecordedDuration = recorded_duration;
   }
 
   return true;
@@ -920,4 +929,14 @@ PVR_ERROR PVRIptvData::DeleteRecord(int iRecordId)
   os << iRecordId;
 
   return DeleteRecord(os.str());
+}
+
+PVR_ERROR PVRIptvData::GetDriveSpace(long long *iTotal, long long *iUsed)
+{
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    *iTotal = m_recordingAvailableDuration;
+    *iUsed = m_recordingRecordedDuration;
+  }
+  return PVR_ERROR_NO_ERROR;
 }

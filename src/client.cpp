@@ -282,10 +282,10 @@ const char *GetConnectionString(void)
 
 PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 {
-  //TODO
-  *iTotal = 0;
-  *iUsed  = 0;
-  return PVR_ERROR_NO_ERROR;
+  if (m_data)
+    return m_data->GetDriveSpace(iTotal, iUsed);
+
+  return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)

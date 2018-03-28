@@ -145,6 +145,7 @@ public:
   PVR_ERROR AddTimer(const PVR_TIMER &timer, bool virtualTimeshift);
   PVR_ERROR DeleteRecord(const std::string &strRecordId);
   PVR_ERROR DeleteRecord(int iRecordId);
+  PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed);
 
 protected:
   static int ParseDateTime(std::string strDate);
@@ -184,6 +185,8 @@ private:
   std::shared_ptr<const recording_container_t> m_recordings;
   std::shared_ptr<const PVRIptvRecording> m_virtualTimeshiftRecording;
   std::shared_ptr<const timer_container_t> m_timers;
+  long long m_recordingAvailableDuration;
+  long long m_recordingRecordedDuration;
   time_t m_epgMinTime;
   time_t m_epgMaxTime;
   int m_epgMaxDays;
