@@ -42,7 +42,7 @@ public:
   static std::string formatTime(time_t t);
 
 public:
-  ApiManager();
+  ApiManager(const std::string & userName, const std::string & userPassword);
 
   bool pairDevice();
   bool login();
@@ -64,13 +64,15 @@ private:
   std::string readPairFile();
   void createPairFile(const std::string &content);
   std::string call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar);
-  std::string apiCall(const std::string &function, const ApiParamMap & paramsMap);
+  std::string apiCall(const std::string &function, const ApiParamMap & paramsMap, bool putSessionVar = true);
   bool isSuccess(const std::string &response, Json::Value & root);
   bool isSuccess(const std::string &response);
 
   static const std::string API_URL;
   static const std::string TIMESHIFTINFO_URL;
   static const std::string PAIR_FILE;
+  const std::string m_userName;
+  const std::string m_userPassword;
   std::string m_deviceId;
   std::string m_password;
   std::shared_ptr<const std::string> m_sessionId;

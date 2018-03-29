@@ -46,31 +46,24 @@ using namespace ADDON;
 
 
 ADDON_STATUS   m_CurStatus      = ADDON_STATUS_UNKNOWN;
-PVRIptvData   *m_data           = NULL;
+static std::unique_ptr<PVRIptvData> m_data;
 
 /* User adjustable settings are saved here.
  * Default values are defined inside client.h
  * and exported to the other source files.
  */
-std::string g_strUserPath   = "";
-std::string g_strClientPath = "";
+static std::string g_strUserPath   = "";
+static std::string g_strClientPath = "";
+static int g_iEpgMaxDays = 0;
 
 CHelper_libXBMC_addon *XBMC = NULL;
 CHelper_libXBMC_pvr   *PVR  = NULL;
 
-//std::string g_strTvgPath    = "";
-//std::string g_strM3UPath    = "";
-//std::string g_strLogoPath   = "";
 std::string g_strUserName	= "";
 std::string g_strPassword	= "";
 bool g_bHdEnabled = true;
-//int         g_iEPGTimeShift = 0;
-//int         g_iStartNumber  = 1;
-//bool        g_bTSOverride   = true;
-//bool        g_bCacheM3U     = false;
-//bool        g_bCacheEPG     = false;
 
-extern std::string PathCombine(const std::string &strPath, const std::string &strFileName)
+std::string PathCombine(const std::string &strPath, const std::string &strFileName)
 {
   std::string strResult = strPath;
   if (strResult.at(strResult.size() - 1) == '\\' ||
@@ -87,12 +80,12 @@ extern std::string PathCombine(const std::string &strPath, const std::string &st
   return strResult;
 }
 
-extern std::string GetClientFilePath(const std::string &strFileName)
+std::string GetClientFilePath(const std::string &strFileName)
 {
   return PathCombine(g_strClientPath, strFileName);
 }
 
-extern std::string GetUserFilePath(const std::string &strFileName)
+std::string GetUserFilePath(const std::string &strFileName)
 {
   return PathCombine(g_strUserPath, strFileName);
 }
@@ -156,8 +149,10 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   }
 
   ADDON_ReadSettings();
+  g_iEpgMaxDays = pvrprops->iEpgMaxDays;
 
-  m_data = new PVRIptvData(pvrprops->iEpgMaxDays);
+  m_data.reset(); // be sure that the previous one is deleted before new is constructed
+  m_data.reset(new PVRIptvData{g_strUserName, g_strPassword, g_bHdEnabled, g_iEpgMaxDays});
   m_CurStatus = ADDON_STATUS_OK;
 
   return m_CurStatus;
@@ -170,7 +165,7 @@ ADDON_STATUS ADDON_GetStatus()
 
 void ADDON_Destroy()
 {
-  delete m_data;
+  m_data.reset();
   m_CurStatus = ADDON_STATUS_UNKNOWN;
 }
 
@@ -186,30 +181,13 @@ unsigned int ADDON_GetSettings(ADDON_StructSetting ***sSet)
 
 ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
 {
-  // reset cache and restart addon
-
-  std::string strFile = GetUserFilePath(M3U_FILE_NAME);
-  if (XBMC->FileExists(strFile.c_str(), false))
-  {
-    XBMC->DeleteFile(strFile.c_str());
-  }
-
-  strFile = GetUserFilePath(TVG_FILE_NAME);
-  if (XBMC->FileExists(strFile.c_str(), false))
-  {
-    XBMC->DeleteFile(strFile.c_str());
-  }
-
+  // just force our data to be re-created
   return ADDON_STATUS_NEED_RESTART;
 }
 
 void ADDON_Stop()
 {
-  if (m_data != NULL)
-  {
-    delete m_data;
-    m_data = NULL;
-  }
+  m_data.reset();
 }
 
 void ADDON_FreeSettings()

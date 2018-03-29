@@ -35,33 +35,33 @@
 using namespace std;
 using namespace ADDON;
 
-extern bool g_bHdEnabled;
-
 const std::string PVRIptvData::VIRTUAL_TIMESHIFT_ID = "VIRTUAL_TIMESHIFT_ID";
 
-PVRIptvData::PVRIptvData(int iEpgMaxDays)
+  ;
+PVRIptvData::PVRIptvData(const std::string & userName
+    , const std::string & password
+    , bool hdEnabled
+    , int iEpgMaxDays)
+  : m_bKeepAlive{true}
+  , m_bLoadRecordings{true}
+  , m_groups{std::make_shared<group_container_t>()}
+  , m_channels{std::make_shared<channel_container_t>()}
+  , m_epg{std::make_shared<epg_container_t>()}
+  , m_recordings{std::make_shared<recording_container_t>()}
+  , m_timers{std::make_shared<timer_container_t>()}
+  , m_recordingAvailableDuration{0}
+  , m_recordingRecordedDuration{0}
+  , m_epgMinTime{time(nullptr)}
+  , m_epgMaxTime{m_epgMinTime}
+  , m_epgMaxDays{iEpgMaxDays}
+  , m_bEGPLoaded{false}
+  , m_iLastStart{0}
+  , m_iLastEnd{0}
+  , m_epgLastFullRefresh{m_epgMinTime}
+  , m_bHdEnabled{hdEnabled}
+  , m_manager{userName, password}
 {
-  m_iLastStart    = 0;
-  m_iLastEnd      = 0;
 
-  m_bEGPLoaded = false;
-
-  m_bKeepAlive = true;
-  m_bLoadRecordings = true;
-
-  m_groups = std::make_shared<group_container_t>();
-  m_channels = std::make_shared<channel_container_t>();
-  m_epg = std::make_shared<epg_container_t>();
-  m_recordings = std::make_shared<recording_container_t>();
-  m_timers = std::make_shared<timer_container_t>();
-
-  m_recordingAvailableDuration = 0;
-  m_recordingRecordedDuration = 0;
-
-  m_epgMinTime = time(nullptr);
-  m_epgMaxTime = m_epgMinTime;
-  m_epgMaxDays = iEpgMaxDays;
-  m_epgLastFullRefresh = m_epgMinTime;
   SetEPGTimeFrame(m_epgMaxDays);
 
   CreateThread();
@@ -213,16 +213,32 @@ void PVRIptvData::KeepAliveJob()
   XBMC->Log(LOG_DEBUG, "keepAlive:: trigger");
   if (!m_manager.keepAlive())
   {
-    m_manager.login();
+    LoginLoop();
   }
   SetLoadRecordings();
+}
+
+void PVRIptvData::LoginLoop()
+{
+  unsigned login_delay = 0;
+  for (bool should_try = true; KeepAlive() && should_try; --login_delay)
+  {
+    if (0 >= login_delay)
+    {
+      if (m_manager.login())
+        should_try = false;
+      else
+        login_delay = 120; // try in two minutes
+    }
+    Sleep(1000);
+  }
 }
 
 void *PVRIptvData::Process(void)
 {
   XBMC->Log(LOG_DEBUG, "keepAlive:: thread started");
 
-  m_manager.login();
+  LoginLoop();
 
   LoadPlayList();
 
@@ -267,6 +283,7 @@ PVRIptvData::~PVRIptvData(void)
   {
     StopThread(0);
   }
+  XBMC->Log(LOG_DEBUG, "%s destructed", __FUNCTION__);
 }
 
 bool PVRIptvData::KeepAlive()
@@ -551,7 +568,7 @@ bool PVRIptvData::LoadPlayList(void)
 
     std::string strUrl = iptvchan.strStreamURL;
 
-    if (g_bHdEnabled)
+    if (m_bHdEnabled)
     {
       size_t qIndex = strUrl.find("quality");
       strUrl.replace(strUrl.begin() + qIndex, strUrl.end(), "quality=40");

@@ -37,8 +37,8 @@
 
 using namespace ADDON;
 
-const std::string ApiManager::API_URL = "http://sledovanitv.cz/api/";
-const std::string ApiManager::TIMESHIFTINFO_URL = "http://sledovanitv.cz/playback/timeshiftInfo";
+const std::string ApiManager::API_URL = "https://sledovanitv.cz/api/";
+const std::string ApiManager::TIMESHIFTINFO_URL = "https://sledovanitv.cz/playback/timeshiftInfo";
 const std::string ApiManager::PAIR_FILE = "pairinfo";
 
 /* Converts a hex character to its integer value */
@@ -78,14 +78,23 @@ std::string ApiManager::formatTime(time_t t)
   return buf;
 }
 
-ApiManager::ApiManager()
-  : m_sessionId{std::make_shared<std::string>()}
+ApiManager::ApiManager(const std::string & userName, const std::string & userPassword)
+  : m_userName{userName}
+  , m_userPassword{userPassword}
+  , m_sessionId{std::make_shared<std::string>()}
 {
   XBMC->Log(LOG_NOTICE, "Loading ApiManager");
 }
 
 std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar)
 {
+  if (putSessionVar)
+  {
+    auto session_id = m_sessionId;
+    // if we need to put the sessionVar, but not logged in... do nothing
+    if (session_id->empty())
+      return std::string();
+  }
   std::string url = urlPath;
   url += '?';
   url += buildQueryString(paramsMap, putSessionVar);
@@ -107,11 +116,11 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & pa
   return response;
 }
 
-std::string ApiManager::apiCall(const std::string &function, const ApiParamMap & paramsMap)
+std::string ApiManager::apiCall(const std::string &function, const ApiParamMap & paramsMap, bool putSessionVar /*= true*/)
 {
   std::string url = API_URL;
   url += function;
-  return call(url, paramsMap, true);
+  return call(url, paramsMap, putSessionVar);
 }
 
 bool ApiManager::isSuccess(const std::string &response, Json::Value & root)
@@ -122,11 +131,11 @@ bool ApiManager::isSuccess(const std::string &response, Json::Value & root)
   {
     bool success = root.get("status", 0).asInt() == 1;
     if (!success)
-      XBMC->Log(LOG_ERROR, "Error indicated in response. status: %s, error: %s", root.get("status", "0").asString().c_str(), root.get("error", "").asString().c_str());
+      XBMC->Log(LOG_ERROR, "Error indicated in response. status: %d, error: %s", root.get("status", 0).asInt(), root.get("error", "").asString().c_str());
     return success;
   }
 
-  XBMC->Log(LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", response.c_str(), 1024, reader.getFormatedErrorMessages().c_str());
+  XBMC->Log(LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", std::min(response.size(), static_cast<size_t>(1024)), response.c_str(), reader.getFormatedErrorMessages().c_str());
   return false;
 }
 
@@ -149,23 +158,34 @@ bool ApiManager::pairDevice()
     gethostname(hostName, 256);
 
     std::string macAddr;
-    std::ifstream ifs("/sys/class/net/eth0/address");
-    if (ifs.is_open())
+    constexpr char const * const iface_possibilities[] = {
+      "/sys/class/net/eth0/address"
+        , "/sys/class/net/wlan0/address"
+        , "/sys/class/net/eth1/address"
+        , "/sys/class/net/wlan1/address"
+    };
+    for (const auto & file : iface_possibilities)
     {
-      std::getline(ifs, macAddr);
+      std::ifstream ifs(file);
+      if (ifs.is_open())
+      {
+        std::getline(ifs, macAddr);
+      }
+      if (!macAddr.empty())
+        break;
     }
 #else
     char *hostName = "Kodi Win32";
     std::string macAddr = "11:22:33:44";
 #endif
 
-    params["username"] = g_strUserName;
-    params["password"] = g_strPassword;
-    params["type"] = "androidtv";
+    params["username"] = m_userName;
+    params["password"] = m_userPassword;
+    params["type"] = "xbmc";
     params["product"] = hostName;
     params["serial"] = macAddr;
 
-    pairJson = apiCall("create-pairing", params);
+    pairJson = apiCall("create-pairing", params, false);
   }
 
   Json::Value root;
@@ -218,7 +238,7 @@ bool ApiManager::login()
   Json::Value root;
 
   auto new_session_id = std::make_shared<std::string>();
-  if (isSuccess(apiCall("device-login", param), root))
+  if (isSuccess(apiCall("device-login", param, false), root))
   {
     *new_session_id = root.get("PHPSESSID", "").asString();
 

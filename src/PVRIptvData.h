@@ -127,7 +127,10 @@ public:
 class PVRIptvData : public P8PLATFORM::CThread
 {
 public:
-  PVRIptvData(int iEpgMaxDays);
+  PVRIptvData(const std::string & userName
+      , const std::string & password
+      , bool hdEnabled
+      , int iEpgMaxDays);
   virtual ~PVRIptvData(void);
 
   int GetChannelsAmount(void);
@@ -161,6 +164,7 @@ protected:
   bool LoadRecordings();
   void LoadRecordingsJob();
   void SetLoadRecordings();
+  void LoginLoop();
 
 protected:
   virtual void *Process(void) override;
@@ -172,11 +176,6 @@ private:
   bool                              m_bKeepAlive;
   bool                              m_bLoadRecordings;
   std::mutex                        m_mutex;
-  // stored data used only by "job" thread
-  bool m_bEGPLoaded;
-  time_t m_iLastStart;
-  time_t m_iLastEnd;
-  time_t m_epgLastFullRefresh;
 
   // stored data from backend (used by multiple threads...)
   std::shared_ptr<const group_container_t> m_groups;
@@ -190,6 +189,13 @@ private:
   time_t m_epgMinTime;
   time_t m_epgMaxTime;
   int m_epgMaxDays;
+
+  // data used only by "job" thread
+  bool m_bEGPLoaded;
+  time_t m_iLastStart;
+  time_t m_iLastEnd;
+  time_t m_epgLastFullRefresh;
+  bool m_bHdEnabled;
 
   ApiManager                        m_manager;
 };
