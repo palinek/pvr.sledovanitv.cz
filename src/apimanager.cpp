@@ -34,6 +34,7 @@
 #include "client.h"
 #include "apimanager.h"
 #include <ctime>
+#include <sstream>
 
 using namespace ADDON;
 
@@ -147,10 +148,13 @@ bool ApiManager::isSuccess(const std::string &response)
 
 bool ApiManager::pairDevice()
 {
+  bool new_pairing = false;
   std::string pairJson = readPairFile();
 
-  if (pairJson.empty())
+  Json::Value root;
+  if (pairJson.empty() || !isSuccess(pairJson, root) || root.get("userName", "").asString() != m_userName)
   {
+    new_pairing = true;
     ApiParamMap params;
 
 #ifndef _WIN32
@@ -188,8 +192,6 @@ bool ApiManager::pairDevice()
     pairJson = apiCall("create-pairing", params, false);
   }
 
-  Json::Value root;
-
   if (isSuccess(pairJson, root))
   {
     int devId = root.get("deviceId", 0).asInt();
@@ -202,15 +204,17 @@ bool ApiManager::pairDevice()
 
     XBMC->Log(LOG_DEBUG, "Device ID: %d, Password: %s", devId, passwd.c_str());
 
-    if (!m_deviceId.empty() && !m_password.empty())
+    const bool paired = !m_deviceId.empty() && !m_password.empty();
+
+    if (paired && new_pairing)
     {
-      createPairFile(pairJson);
-      return true;
+      // add the userName to written json
+      root["userName"] = m_userName;
+      std::ostringstream os;
+      os << root;
+      createPairFile(os.str());
     }
-    else
-    {
-      return false;
-    }
+    return paired;
   }
   else
   {
