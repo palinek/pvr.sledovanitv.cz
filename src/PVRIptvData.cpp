@@ -51,13 +51,13 @@ PVRIptvData::PVRIptvData(const std::string & userName
   , m_timers{std::make_shared<timer_container_t>()}
   , m_recordingAvailableDuration{0}
   , m_recordingRecordedDuration{0}
-  , m_epgMinTime{time(nullptr)}
-  , m_epgMaxTime{m_epgMinTime}
+  , m_epgMinTime{time(nullptr) - 86400}
+  , m_epgMaxTime{time(nullptr)}
   , m_epgMaxDays{iEpgMaxDays}
   , m_bEGPLoaded{false}
   , m_iLastStart{0}
   , m_iLastEnd{0}
-  , m_epgLastFullRefresh{m_epgMinTime}
+  , m_epgLastFullRefresh{m_epgMaxTime}
   , m_bHdEnabled{hdEnabled}
   , m_manager{userName, password}
 {
@@ -734,8 +734,8 @@ PVR_ERROR PVRIptvData::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &
 {
   XBMC->Log(LOG_DEBUG, "%s %s, from=%s to=%s", __FUNCTION__, channel.strChannelName, ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(iEnd).c_str());
   std::lock_guard<std::mutex> critical(m_mutex);
-  m_epgMinTime = std::min(m_epgMinTime, iStart);
-  m_epgMaxTime = std::max(m_epgMaxTime, iEnd);
+  m_epgMinTime = iStart;
+  m_epgMaxTime = iEnd;
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -744,7 +744,6 @@ PVR_ERROR PVRIptvData::SetEPGTimeFrame(int iDays)
   XBMC->Log(LOG_DEBUG, "%s iDays=%d", __FUNCTION__, iDays);
   time_t now = time(nullptr);
   std::lock_guard<std::mutex> critical(m_mutex);
-  m_epgMinTime = now - 86400;
   m_epgMaxTime = now + iDays * 86400;
   m_epgMaxDays = iDays;
 
