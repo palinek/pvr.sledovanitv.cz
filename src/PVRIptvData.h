@@ -91,6 +91,7 @@ struct PVRIptvRecording
   time_t		startTime;
   int			duration;
   std::string strDirectory;
+  bool bRadio;
 };
 
 struct PVRIptvTimer
