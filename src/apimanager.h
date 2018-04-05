@@ -53,20 +53,22 @@ public:
   std::string getRecordingUrl(const std::string &recId);
   bool getTimeShiftInfo(const std::string &eventId
       , std::string & streamUrl
-      , int & duration);
+      , int & duration) const;
   bool addTimer(const std::string &eventId);
   bool deleteRecord(const std::string &recId);
   bool keepAlive();
+  bool loggedIn() const;
 
 private:
-  std::string urlEncode(const std::string &str);
-  std::string buildQueryString(const ApiParamMap & paramMap, bool putSessionVar);
-  std::string readPairFile();
-  void createPairFile(const std::string &content);
-  std::string call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar);
-  std::string apiCall(const std::string &function, const ApiParamMap & paramsMap, bool putSessionVar = true);
-  bool isSuccess(const std::string &response, Json::Value & root);
-  bool isSuccess(const std::string &response);
+  static std::string urlEncode(const std::string &str);
+  static std::string readPairFile();
+  static void createPairFile(const std::string &content);
+  static bool isSuccess(const std::string &response, Json::Value & root);
+  static bool isSuccess(const std::string &response);
+
+  std::string buildQueryString(const ApiParamMap & paramMap, bool putSessionVar) const;
+  std::string call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar) const;
+  std::string apiCall(const std::string &function, const ApiParamMap & paramsMap, bool putSessionVar = true) const;
 
   static const std::string API_URL;
   static const std::string TIMESHIFTINFO_URL;

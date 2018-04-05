@@ -30,6 +30,7 @@
 #include "apimanager.h"
 #include <mutex>
 #include <memory>
+#include <condition_variable>
 
 struct PVRIptvEpgEntry
 {
@@ -49,11 +50,12 @@ struct PVRIptvEpgEntry
   bool availableTimeshift;
 };
 
+typedef std::map<time_t, PVRIptvEpgEntry> epg_entry_container_t;
 struct PVRIptvEpgChannel
 {
   std::string                  strId;
   std::string                  strName;
-  std::map<time_t, PVRIptvEpgEntry> epg;
+  epg_entry_container_t epg;
 };
 
 struct PVRIptvChannel
@@ -136,13 +138,17 @@ public:
 
   int GetChannelsAmount(void);
   PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
+  PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl) const;
   PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
+  PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const;
+  PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl) const;
   PVR_ERROR SetEPGTimeFrame(int iDays);
   int GetChannelGroupsAmount(void);
   PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio);
   PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
   int GetRecordingsAmount();
   PVR_ERROR GetRecordings(ADDON_HANDLE handle);
+  PVR_ERROR GetRecordingStreamUrl(const PVR_RECORDING* recording, std::string & streamUrl) const;
   void GetRecordingsUrls();
   int GetTimersAmount();
   PVR_ERROR GetTimers(ADDON_HANDLE handle);
@@ -150,6 +156,7 @@ public:
   PVR_ERROR DeleteRecord(const std::string &strRecordId);
   PVR_ERROR DeleteRecord(int iRecordId);
   PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed);
+  bool LoggedIn() const;
 
 protected:
   static int ParseDateTime(std::string strDate);
@@ -166,6 +173,7 @@ protected:
   void LoadRecordingsJob();
   void SetLoadRecordings();
   void LoginLoop();
+  bool WaitForChannels() const;
 
 protected:
   virtual void *Process(void) override;
@@ -176,7 +184,9 @@ private:
 private:
   bool                              m_bKeepAlive;
   bool                              m_bLoadRecordings;
-  std::mutex                        m_mutex;
+  mutable std::mutex                m_mutex;
+  bool                              m_bChannelsLoaded;
+  mutable std::condition_variable   m_waitCond;
 
   // stored data from backend (used by multiple threads...)
   std::shared_ptr<const group_container_t> m_groups;

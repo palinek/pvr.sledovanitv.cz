@@ -87,7 +87,7 @@ ApiManager::ApiManager(const std::string & userName, const std::string & userPas
   XBMC->Log(LOG_NOTICE, "Loading ApiManager");
 }
 
-std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar)
+std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar) const
 {
   if (putSessionVar)
   {
@@ -117,7 +117,7 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & pa
   return response;
 }
 
-std::string ApiManager::apiCall(const std::string &function, const ApiParamMap & paramsMap, bool putSessionVar /*= true*/)
+std::string ApiManager::apiCall(const std::string &function, const ApiParamMap & paramsMap, bool putSessionVar /*= true*/) const
 {
   std::string url = API_URL;
   url += function;
@@ -309,7 +309,7 @@ std::string ApiManager::getRecordingUrl(const std::string &recId)
 
 bool ApiManager::getTimeShiftInfo(const std::string &eventId
     , std::string & streamUrl
-    , int & duration)
+    , int & duration) const
 {
   ApiParamMap param;
   param["eventId"] = eventId;
@@ -349,6 +349,12 @@ bool ApiManager::keepAlive()
     return isSuccess(apiCall("keepalive", param));
 }
 
+bool ApiManager::loggedIn() const
+{
+  auto session_id = m_sessionId;
+  return !session_id->empty();
+}
+
 std::string ApiManager::urlEncode(const std::string &str)
 {
   std::string strOut;
@@ -357,7 +363,7 @@ std::string ApiManager::urlEncode(const std::string &str)
   return strOut;
 }
 
-std::string ApiManager::buildQueryString(const ApiParamMap & paramMap, bool putSessionVar)
+std::string ApiManager::buildQueryString(const ApiParamMap & paramMap, bool putSessionVar) const
 {
   XBMC->Log(LOG_DEBUG, "%s - size %d", __FUNCTION__, paramMap.size());
   std::string strOut;
