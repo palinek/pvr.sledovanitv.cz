@@ -21,8 +21,12 @@ set(DEPLIBS ${p8-platform_LIBRARIES}
 
 
 set(SLEDOVANITV_SOURCES src/client.cpp
-		 src/apimanager.cpp
-                 src/PVRIptvData.cpp)
+  src/apimanager.cpp
+  src/PVRIptvData.cpp)
+
+set(SLEDOVANITV_HEADERS src/client.h
+  src/apimanager.h
+  src/PVRIptvData.h)
 
 build_addon(pvr.sledovanitv SLEDOVANITV DEPLIBS)
 
