@@ -35,9 +35,6 @@
 using namespace std;
 using namespace ADDON;
 
-const std::string PVRIptvData::VIRTUAL_TIMESHIFT_ID = "VIRTUAL_TIMESHIFT_ID";
-
-  ;
 PVRIptvData::PVRIptvData(const std::string & userName
     , const std::string & password
     , bool hdEnabled
@@ -862,26 +859,13 @@ int PVRIptvData::ParseDateTime(std::string strDate)
 
 int PVRIptvData::GetRecordingsAmount()
 {
-  decltype (m_recordings) recordings;
-  decltype (m_virtualTimeshiftRecording) virtual_recording;
-  {
-    std::lock_guard<std::mutex> critical(m_mutex);
-    recordings = m_recordings;
-    virtual_recording = m_virtualTimeshiftRecording;
-  }
-  return recordings->size() + (virtual_recording ? 1 : 0);
+  auto recordings = m_recordings;
+  return recordings->size();
 }
 
 PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
 {
-  decltype (m_recordings) recordings;
-  decltype (m_virtualTimeshiftRecording) virtual_recording;
-  {
-    std::lock_guard<std::mutex> critical(m_mutex);
-    recordings = m_recordings;
-    virtual_recording = m_virtualTimeshiftRecording;
-  }
-
+  auto recordings = m_recordings;
   std::vector<PVR_RECORDING> xbmc_records;
   auto insert_lambda = [&xbmc_records] (const PVRIptvRecording & rec)
   {
@@ -903,9 +887,6 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
 
   std::for_each(recordings->cbegin(), recordings->cend(), insert_lambda);
 
-  if (virtual_recording)
-    insert_lambda(*virtual_recording);
-
   for (const auto & xbmcRecord : xbmc_records)
   {
     PVR->TransferRecordingEntry(handle, &xbmcRecord);
@@ -916,22 +897,12 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
 
 PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const PVR_RECORDING* recording, std::string & streamUrl) const
 {
-  if (recording->strRecordingId == VIRTUAL_TIMESHIFT_ID)
-  {
-    auto virtual_recording = m_virtualTimeshiftRecording;
-    if (!virtual_recording)
-      return PVR_ERROR_INVALID_PARAMETERS;
+  auto recordings = m_recordings;
+  auto rec_i = std::find_if(recordings->cbegin(), recordings->cend(), [recording] (const PVRIptvRecording & r) { return recording->strRecordingId == r.strRecordId; });
+  if (recordings->cend() == rec_i)
+    return PVR_ERROR_INVALID_PARAMETERS;
 
-    streamUrl = virtual_recording->strStreamUrl;
-  } else
-  {
-    auto recordings = m_recordings;
-    auto rec_i = std::find_if(recordings->cbegin(), recordings->cend(), [recording] (const PVRIptvRecording & r) { return recording->strRecordingId == r.strRecordId; });
-    if (recordings->cend() == rec_i)
-      return PVR_ERROR_INVALID_PARAMETERS;
-
-    streamUrl = rec_i->strStreamUrl;
-  }
+  streamUrl = rec_i->strStreamUrl;
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -970,16 +941,14 @@ PVR_ERROR PVRIptvData::GetTimers(ADDON_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer, bool virtualTimeshift)
+PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
-  decltype (m_virtualTimeshiftRecording) virtual_recording;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     channels = m_channels;
     epg = m_epg;
-    virtual_recording = m_virtualTimeshiftRecording;
   }
 
   const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&timer] (const PVRIptvChannel & ch) { return ch.iUniqueId == timer.iClientChannelUid; });
@@ -1003,51 +972,16 @@ PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer, bool virtualTimeshift)
   }
 
   const PVRIptvEpgEntry & epg_entry = epg_i->second;
-  if (virtualTimeshift)
+  if (m_manager.addTimer(epg_entry.strEventId))
   {
-    // create the timeshift "virtual" recording entry
-    if (epg_entry.availableTimeshift)
-    {
-      std::shared_ptr<PVRIptvRecording> recording = std::make_shared<PVRIptvRecording>();
-      if (m_manager.getTimeShiftInfo(epg_entry.strEventId, recording->strStreamUrl, recording->duration))
-      {
-        std::string title = "Timeshift - ";
-        title += channel_i->strChannelName;
-        title += " - ";
-        title += epg_entry.strTitle;
-
-        recording->strRecordId = VIRTUAL_TIMESHIFT_ID;
-        recording->strTitle = title;
-        //recording->strDirectory = directory;
-        recording->strChannelName = channel_i->strChannelName;
-        recording->startTime = epg_entry.startTime;
-        recording->strPlotOutline = epg_entry.strPlot;
-        recording->duration = epg_entry.endTime - epg_entry.startTime;
-
-        m_virtualTimeshiftRecording = std::move(recording);
-        PVR->TriggerRecordingUpdate();
-        return PVR_ERROR_NO_ERROR;
-      }
-    }
-  } else
-  {
-    if (m_manager.addTimer(epg_entry.strEventId))
-    {
-      SetLoadRecordings();
-      return PVR_ERROR_NO_ERROR;
-    }
+    SetLoadRecordings();
+    return PVR_ERROR_NO_ERROR;
   }
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR PVRIptvData::DeleteRecord(const string &strRecordId)
 {
-  if (strRecordId == VIRTUAL_TIMESHIFT_ID)
-  {
-    m_virtualTimeshiftRecording.reset();
-    PVR->TriggerRecordingUpdate();
-    return PVR_ERROR_NO_ERROR;
-  }
   if (m_manager.deleteRecord(strRecordId))
   {
     SetLoadRecordings();

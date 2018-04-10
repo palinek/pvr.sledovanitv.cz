@@ -460,48 +460,6 @@ PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
   //types[pos].iMaxRecordingsDefault = 0;
   XBMC->Log(LOG_DEBUG, "%s - attributes: 0x%x", __FUNCTION__, types[pos].iAttributes);
 
-  ++pos;
-  types[pos].iId = pos + 1;
-  types[pos].iAttributes = PVR_TIMER_TYPE_IS_MANUAL | PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME;
-  strncpy(types[pos].strDescription, "Virtual for timeshift", sizeof (types[pos].strDescription));
-  types[pos].iPrioritiesSize = 0; // no priorities needed
-  //types[pos].priorities
-  //types[pos].iPrioritiesDefault = 0;
-  types[pos].iLifetimesSize = 0; // no lifetime settings supported yet
-  //types[pos].lifetimes
-  //types[pos].iLifetimesDefault = 0;
-  types[pos].iPreventDuplicateEpisodesSize = 0;
-  //types[pos].preventDuplicateEpisodes
-  //types[pos].iPreventDuplicateEpisodesDefault = 0;
-  types[pos].iRecordingGroupSize = 0;
-  //types[pos].maxRecordings
-  //types[pos].iRecordingGroupDefault = 0;
-  types[pos].iMaxRecordingsSize = 0;
-  //types[pos].maxRecordings
-  //types[pos].iMaxRecordingsDefault = 0;
-  XBMC->Log(LOG_DEBUG, "%s - attributes: 0x%x", __FUNCTION__, types[pos].iAttributes);
-
-  ++pos;
-  types[pos].iId = pos + 1;
-  types[pos].iAttributes = PVR_TIMER_TYPE_IS_REPEATING | PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME;
-  strncpy(types[pos].strDescription, "Virtual for timeshift", sizeof (types[pos].strDescription));
-  types[pos].iPrioritiesSize = 0; // no priorities needed
-  //types[pos].priorities
-  //types[pos].iPrioritiesDefault = 0;
-  types[pos].iLifetimesSize = 0; // no lifetime settings supported yet
-  //types[pos].lifetimes
-  //types[pos].iLifetimesDefault = 0;
-  types[pos].iPreventDuplicateEpisodesSize = 0;
-  //types[pos].preventDuplicateEpisodes
-  //types[pos].iPreventDuplicateEpisodesDefault = 0;
-  types[pos].iRecordingGroupSize = 0;
-  //types[pos].maxRecordings
-  //types[pos].iRecordingGroupDefault = 0;
-  types[pos].iMaxRecordingsSize = 0;
-  //types[pos].maxRecordings
-  //types[pos].iMaxRecordingsDefault = 0;
-  XBMC->Log(LOG_DEBUG, "%s - attributes: 0x%x", __FUNCTION__, types[pos].iAttributes);
-
   *size = pos + 1;
   return PVR_ERROR_NO_ERROR;
 }
@@ -512,10 +470,7 @@ PVR_ERROR AddTimer(const PVR_TIMER &timer)
   if (!m_data)
     return PVR_ERROR_SERVER_ERROR;
 
-  if (timer.iTimerType < 3)
-    return m_data->AddTimer(timer, false/*normal*/);
-  else
-    return m_data->AddTimer(timer, true/*virtual*/);
+  return m_data->AddTimer(timer);
 }
 
 PVR_ERROR DeleteTimer(const PVR_TIMER &timer, bool bForceDelete)
