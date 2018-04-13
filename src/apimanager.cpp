@@ -37,6 +37,7 @@
 #include "apimanager.h"
 #include <ctime>
 #include <sstream>
+#include <algorithm>
 
 using namespace ADDON;
 
