@@ -28,6 +28,10 @@ set(SLEDOVANITV_HEADERS src/client.h
   src/apimanager.h
   src/PVRIptvData.h)
 
+if(WIN32)
+  add_definitions("/wd4996")
+endif()
+
 build_addon(pvr.sledovanitv.cz SLEDOVANITV DEPLIBS)
 
 include(CPack)
