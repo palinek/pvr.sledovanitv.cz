@@ -1,4 +1,4 @@
-project(pvr.sledovanitv)
+project(pvr.sledovanitv.cz)
 
 cmake_minimum_required(VERSION 2.6)
 
@@ -28,6 +28,6 @@ set(SLEDOVANITV_HEADERS src/client.h
   src/apimanager.h
   src/PVRIptvData.h)
 
-build_addon(pvr.sledovanitv SLEDOVANITV DEPLIBS)
+build_addon(pvr.sledovanitv.cz SLEDOVANITV DEPLIBS)
 
 include(CPack)
