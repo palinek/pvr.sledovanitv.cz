@@ -1,3 +1,6 @@
+[![Build status](https://travis-ci.org/palinek/pvr.sledovanitv.cz.svg?branch=master)](https://travis-ci.org/palinek/pvr.sledovanitv.cz)
+[![Build status](https://ci.appveyor.com/api/projects/status/02qaoie8tcv4klnf/branch/master?svg=true)](https://ci.appveyor.com/project/palinek/pvr-sledovanitv-cz/branch/master)
+
 # sledovanitv.cz PVR
 sledovanitv.cz PVR client addon for [Kodi](http://kodi.tv)
 
