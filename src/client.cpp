@@ -48,7 +48,7 @@ using namespace ADDON;
 
 
 ADDON_STATUS   m_CurStatus      = ADDON_STATUS_UNKNOWN;
-static std::unique_ptr<PVRIptvData> m_data;
+static std::shared_ptr<PVRIptvData> m_data;
 
 /* User adjustable settings are saved here.
  * Default values are defined inside client.h
@@ -229,46 +229,51 @@ const char *GetConnectionString(void)
 
 PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 {
-  if (m_data)
-    return m_data->GetDriveSpace(iTotal, iUsed);
+  auto data = m_data;
+  if (data)
+    return data->GetDriveSpace(iTotal, iUsed);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
-  if (m_data)
-    return m_data->GetEPGForChannel(handle, channel, iStart, iEnd);
+  auto data = m_data;
+  if (data)
+    return data->GetEPGForChannel(handle, channel, iStart, iEnd);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR SetEPGTimeFrame(int iDays)
 {
-  if (m_data)
-    return m_data->SetEPGTimeFrame(iDays);
+  auto data = m_data;
+  if (data)
+    return data->SetEPGTimeFrame(iDays);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable)
 {
-  if (m_data)
-    return m_data->IsEPGTagPlayable(tag, bIsPlayable);
+  auto data = m_data;
+  if (data)
+    return data->IsEPGTagPlayable(tag, bIsPlayable);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
-  if (!tag || !properties || !iPropertiesCount || !m_data)
+  auto data = m_data;
+  if (!tag || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
    if (*iPropertiesCount < 1)
      return PVR_ERROR_INVALID_PARAMETERS;
 
    std::string stream_url;
-   PVR_ERROR ret = m_data->GetEPGStreamUrl(tag, stream_url);
+   PVR_ERROR ret = data->GetEPGStreamUrl(tag, stream_url);
    if (PVR_ERROR_NO_ERROR != ret)
      return ret;
 
@@ -280,30 +285,33 @@ PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* propert
 
 int GetChannelsAmount(void)
 {
-  if (m_data)
-    return m_data->GetChannelsAmount();
+  auto data = m_data;
+  if (data)
+    return data->GetChannelsAmount();
 
   return -1;
 }
 
 PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
-  if (m_data)
-    return m_data->GetChannels(handle, bRadio);
+  auto data = m_data;
+  if (data)
+    return data->GetChannels(handle, bRadio);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
-  if (!channel || !properties || !iPropertiesCount || !m_data)
+  auto data = m_data;
+  if (!channel || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
   if (*iPropertiesCount < 1)
     return PVR_ERROR_INVALID_PARAMETERS;
 
    std::string stream_url;
-   PVR_ERROR ret = m_data->GetChannelStreamUrl(channel, stream_url);
+   PVR_ERROR ret = data->GetChannelStreamUrl(channel, stream_url);
    if (PVR_ERROR_NO_ERROR != ret)
      return ret;
 
@@ -315,24 +323,27 @@ PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE
 
 int GetChannelGroupsAmount(void)
 {
-  if (m_data)
-    return m_data->GetChannelGroupsAmount();
+  auto data = m_data;
+  if (data)
+    return data->GetChannelGroupsAmount();
 
   return -1;
 }
 
 PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
-  if (m_data)
-    return m_data->GetChannelGroups(handle, bRadio);
+  auto data = m_data;
+  if (data)
+    return data->GetChannelGroups(handle, bRadio);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
-  if (m_data)
-    return m_data->GetChannelGroupMembers(handle, group);
+  auto data = m_data;
+  if (data)
+    return data->GetChannelGroupMembers(handle, group);
 
   return PVR_ERROR_SERVER_ERROR;
 }
@@ -356,34 +367,37 @@ int GetRecordingsAmount(bool deleted)
   if (deleted)
     return 0;
 
-  if (m_data)
-    return m_data->GetRecordingsAmount();
+  auto data = m_data;
+  if (data)
+    return data->GetRecordingsAmount();
 
   return 0;
 }
 
 PVR_ERROR GetRecordings(ADDON_HANDLE handle, bool deleted)
 {
+  XBMC->Log(LOG_DEBUG, "%s", __FUNCTION__);
   if (deleted)
     return PVR_ERROR_NO_ERROR;
 
-  XBMC->Log(LOG_DEBUG, "%s", __FUNCTION__);
-  if (m_data)
-    return m_data->GetRecordings(handle);
+  auto data = m_data;
+  if (data)
+    return data->GetRecordings(handle);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
-  if (!recording || !properties || !iPropertiesCount || !m_data)
+  auto data = m_data;
+  if (!recording || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
   if (*iPropertiesCount < 1)
     return PVR_ERROR_INVALID_PARAMETERS;
 
    std::string stream_url;
-   PVR_ERROR ret = m_data->GetRecordingStreamUrl(recording, stream_url);
+   PVR_ERROR ret = data->GetRecordingStreamUrl(recording, stream_url);
    if (PVR_ERROR_NO_ERROR != ret)
      return ret;
 
@@ -403,16 +417,18 @@ bool CanSeekStream(void)
 /** TIMER FUNCTIONS */
 int GetTimersAmount(void)
 {
-  if (m_data)
-    return m_data->GetTimersAmount();
+  auto data = m_data;
+  if (data)
+    return data->GetTimersAmount();
 
   return -1;
 }
 
 PVR_ERROR GetTimers(ADDON_HANDLE handle)
 {
-  if (m_data)
-    return m_data->GetTimers(handle);
+  auto data = m_data;
+  if (data)
+    return data->GetTimers(handle);
 
   return PVR_ERROR_SERVER_ERROR;
 }
@@ -469,24 +485,27 @@ PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
 PVR_ERROR AddTimer(const PVR_TIMER &timer)
 {
   XBMC->Log(LOG_DEBUG, "%s - type %d", __FUNCTION__, timer.iTimerType);
-  if (!m_data)
+  auto data = m_data;
+  if (!data)
     return PVR_ERROR_SERVER_ERROR;
 
-  return m_data->AddTimer(timer);
+  return data->AddTimer(timer);
 }
 
 PVR_ERROR DeleteTimer(const PVR_TIMER &timer, bool bForceDelete)
 {
-  if (m_data)
-    return m_data->DeleteRecord(timer.iClientIndex);
+  auto data = m_data;
+  if (data)
+    return data->DeleteRecord(timer.iClientIndex);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR DeleteRecording(const PVR_RECORDING &recording)
 {
-  if (m_data)
-    return m_data->DeleteRecord(recording.strRecordingId);
+  auto data = m_data;
+  if (data)
+    return data->DeleteRecord(recording.strRecordingId);
 
   return PVR_ERROR_SERVER_ERROR;
 }
