@@ -122,11 +122,10 @@ bool PVRIptvData::LoadEPGJob()
     LoadPlayList();
   }
 
-  time_t min_epg, max_epg;
+  time_t min_epg;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     min_epg = m_epgMinTime;
-    max_epg = m_epgMaxTime;
   }
   bool updated = false;
   if (KeepAlive() && 0 == m_iLastEnd)
