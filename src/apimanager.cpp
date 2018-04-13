@@ -128,9 +128,11 @@ std::string ApiManager::apiCall(const std::string &function, const ApiParamMap &
 
 bool ApiManager::isSuccess(const std::string &response, Json::Value & root)
 {
-  Json::Reader reader;
+  std::string jsonReaderError;
+  Json::CharReaderBuilder jsonReaderBuilder;
+  std::unique_ptr<Json::CharReader> const reader(jsonReaderBuilder.newCharReader());
 
-  if (reader.parse(response, root))
+  if (reader->parse(response.c_str(), response.c_str() + response.size(), &root, &jsonReaderError))
   {
     bool success = root.get("status", 0).asInt() == 1;
     if (!success)
@@ -138,7 +140,7 @@ bool ApiManager::isSuccess(const std::string &response, Json::Value & root)
     return success;
   }
 
-  XBMC->Log(LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", std::min(response.size(), static_cast<size_t>(1024)), response.c_str(), reader.getFormatedErrorMessages().c_str());
+  XBMC->Log(LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", std::min(response.size(), static_cast<size_t>(1024)), response.c_str(), jsonReaderError.c_str());
   return false;
 }
 
