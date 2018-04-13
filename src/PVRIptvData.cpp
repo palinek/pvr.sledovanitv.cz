@@ -805,7 +805,7 @@ PVR_ERROR PVRIptvData::IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) c
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  *bIsPlayable = epg_i->second.availableTimeshift;
+  *bIsPlayable = epg_i->second.availableTimeshift && tag->startTime < time(nullptr);
   return PVR_ERROR_NO_ERROR;
 }
 
