@@ -26,7 +26,6 @@
  */
 
 #include <vector>
-#include "p8-platform/util/StdString.h"
 #include "client.h"
 #include "p8-platform/threads/threads.h"
 #include "apimanager.h"
@@ -62,17 +61,15 @@ struct PVRIptvEpgChannel
 
 struct PVRIptvChannel
 {
-  bool        bRadio;
+  bool        bIsRadio;
   int         iUniqueId;
   int         iChannelNumber;
   int         iEncryptionSystem;
   int         iTvgShift;
   std::string strChannelName;
-  std::string strLogoPath;
+  std::string strIconPath;
   std::string strStreamURL;
-  std::string strTvgId;
-  std::string strTvgName;
-  std::string strTvgLogo;
+  std::string strId;
   std::string strGroupId;
 };
 

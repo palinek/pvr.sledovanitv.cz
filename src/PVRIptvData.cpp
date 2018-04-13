@@ -30,12 +30,19 @@
 #include <iostream>
 #include <json/json.h>
 #include <chrono>
+#include <algorithm>
 
 #include "PVRIptvData.h"
 #include "apimanager.h"
 
 using namespace std;
 using namespace ADDON;
+
+template <int N> void strAssign(char (&dst)[N], const std::string & src)
+{
+  strncpy(dst, src.c_str(), N - 1);
+  dst[N - 1] = '\0'; // just to be sure
+}
 
 PVRIptvData::PVRIptvData(const std::string & userName
     , const std::string & password
@@ -337,12 +344,11 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
   {
     std::string strChId = *i;
 
-    const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&strChId] (const PVRIptvChannel & ch) { return ch.strTvgId == strChId; });
+    const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&strChId] (const PVRIptvChannel & ch) { return ch.strId == strChId; });
     if (channel_i != channels->cend())
     {
       PVRIptvEpgChannel & epgChannel = (*epg_copy)[strChId];
       epgChannel.strId = strChId;
-      epgChannel.strName = channel_i->strChannelName;
 
       Json::Value epgData = json_channels[strChId];
       for (unsigned int j = 0; j < epgData.size(); j++)
@@ -441,7 +447,7 @@ bool PVRIptvData::LoadRecordings()
   {
     Json::Value record = records[i];
     std::string str_ch_id = record.get("channel", "").asString();
-    const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&str_ch_id] (const PVRIptvChannel & ch) { return ch.strTvgId == str_ch_id; });
+    const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&str_ch_id] (const PVRIptvChannel & ch) { return ch.strId == str_ch_id; });
     PVRIptvRecording iptvrecording;
     PVRIptvTimer iptvtimer;
     time_t startTime = ParseDateTime(record.get("startTime", "").asString());
@@ -465,7 +471,7 @@ bool PVRIptvData::LoadRecordings()
       iptvrecording.startTime = startTime;
       iptvrecording.strPlotOutline = record.get("event", "").get("description", "").asString();
       iptvrecording.duration = duration;
-      iptvrecording.bRadio = channel_i->bRadio;
+      iptvrecording.bRadio = channel_i->bIsRadio;
 
       new_recordings->push_back(iptvrecording);
     }
@@ -571,7 +577,7 @@ bool PVRIptvData::LoadPlayList(void)
     Json::Value channel = channels[i];
     PVRIptvChannel iptvchan;
 
-    iptvchan.strTvgId = channel.get("id", "").asString();
+    iptvchan.strId = channel.get("id", "").asString();
     iptvchan.strChannelName = channel.get("name", "").asString();
     iptvchan.strGroupId = channel.get("group", "").asString();
     iptvchan.strStreamURL = channel.get("url", "").asString();
@@ -589,8 +595,8 @@ bool PVRIptvData::LoadPlayList(void)
     iptvchan.strStreamURL = strUrl;
     iptvchan.iUniqueId = i + 1;
     iptvchan.iChannelNumber = i + 1;
-    iptvchan.strLogoPath = channel.get("logoUrl", "").asString();
-    iptvchan.bRadio = channel.get("type", "").asString() != "tv";
+    iptvchan.strIconPath = channel.get("logoUrl", "").asString();
+    iptvchan.bIsRadio = channel.get("type", "").asString() != "tv";
 
     new_channels->push_back(iptvchan);
   }
@@ -644,17 +650,17 @@ PVR_ERROR PVRIptvData::GetChannels(ADDON_HANDLE handle, bool bRadio)
   std::vector<PVR_CHANNEL> xbmc_channels;
   for (const auto & channel : *channels)
   {
-    if (channel.bRadio == bRadio)
+    if (channel.bIsRadio == bRadio)
     {
       PVR_CHANNEL xbmcChannel;
       memset(&xbmcChannel, 0, sizeof(PVR_CHANNEL));
 
       xbmcChannel.iUniqueId         = channel.iUniqueId;
-      xbmcChannel.bIsRadio          = channel.bRadio;
+      xbmcChannel.bIsRadio          = channel.bIsRadio;
       xbmcChannel.iChannelNumber    = channel.iChannelNumber;
-      strncpy(xbmcChannel.strChannelName, channel.strChannelName.c_str(), sizeof(xbmcChannel.strChannelName) - 1);
+      strAssign(xbmcChannel.strChannelName, channel.strChannelName);
       xbmcChannel.iEncryptionSystem = channel.iEncryptionSystem;
-      strncpy(xbmcChannel.strIconPath, channel.strLogoPath.c_str(), sizeof(xbmcChannel.strIconPath) - 1);
+      strAssign(xbmcChannel.strIconPath, channel.strIconPath);
       xbmcChannel.bIsHidden         = false;
 
       xbmc_channels.push_back(std::move(xbmcChannel));
@@ -706,7 +712,7 @@ PVR_ERROR PVRIptvData::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
       memset(&xbmcGroup, 0, sizeof(PVR_CHANNEL_GROUP));
 
       xbmcGroup.bIsRadio = bRadio;
-      strncpy(xbmcGroup.strGroupName, group.strGroupName.c_str(), sizeof(xbmcGroup.strGroupName) - 1);
+      strAssign(xbmcGroup.strGroupName, group.strGroupName);
 
       xbmc_groups.push_back(std::move(xbmcGroup));
     }
@@ -782,11 +788,11 @@ static PVR_ERROR GetEPGData(const EPG_TAG* tag
     return PVR_ERROR_INVALID_PARAMETERS;
   }
 
-  auto ch_epg_i = epg->find(channel_i->strTvgId);
+  auto ch_epg_i = epg->find(channel_i->strId);
 
   if (epg->cend() == ch_epg_i || (epg_i = ch_epg_i->second.epg.find(tag->iUniqueBroadcastId)) == ch_epg_i->second.epg.cend())
   {
-    XBMC->Log(LOG_NOTICE, "%s can't EPG data for find channel %s, time %d", __FUNCTION__, channel_i->strTvgId.c_str(), tag->iUniqueBroadcastId);
+    XBMC->Log(LOG_NOTICE, "%s can't EPG data for find channel %s, time %d", __FUNCTION__, channel_i->strId.c_str(), tag->iUniqueBroadcastId);
     return PVR_ERROR_INVALID_PARAMETERS;
   }
   return PVR_ERROR_NO_ERROR;
@@ -874,13 +880,13 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
     PVR_RECORDING xbmcRecord;
     memset(&xbmcRecord, 0, sizeof(PVR_RECORDING));
 
-    strncpy(xbmcRecord.strRecordingId, rec.strRecordId.c_str(), sizeof(xbmcRecord.strRecordingId) - 1);
-    strncpy(xbmcRecord.strTitle, rec.strTitle.c_str(), sizeof(xbmcRecord.strTitle) - 1);
-    strncpy(xbmcRecord.strDirectory, rec.strDirectory.c_str(), sizeof(xbmcRecord.strDirectory) - 1);
-    strncpy(xbmcRecord.strChannelName, rec.strChannelName.c_str(), sizeof(xbmcRecord.strChannelName) - 1);
+    strAssign(xbmcRecord.strRecordingId, rec.strRecordId);
+    strAssign(xbmcRecord.strTitle, rec.strTitle);
+    strAssign(xbmcRecord.strDirectory, rec.strDirectory);
+    strAssign(xbmcRecord.strChannelName, rec.strChannelName);
     xbmcRecord.recordingTime = rec.startTime;
-    strncpy(xbmcRecord.strPlotOutline, rec.strPlotOutline.c_str(), sizeof(xbmcRecord.strPlotOutline) - 1);
-    strncpy(xbmcRecord.strPlot, rec.strPlotOutline.c_str(), sizeof(xbmcRecord.strPlot) - 1);
+    strAssign(xbmcRecord.strPlotOutline, rec.strPlotOutline);
+    strAssign(xbmcRecord.strPlot, rec.strPlotOutline);
     xbmcRecord.iDuration = rec.duration;
     xbmcRecord.channelType = rec.bRadio ? PVR_RECORDING_CHANNEL_TYPE_RADIO : PVR_RECORDING_CHANNEL_TYPE_TV;
 
@@ -930,8 +936,8 @@ PVR_ERROR PVRIptvData::GetTimers(ADDON_HANDLE handle)
     xbmcTimer.startTime = timer.startTime;
     xbmcTimer.endTime = timer.endTime;
     xbmcTimer.state = timer.state;
-    strncpy(xbmcTimer.strTitle, timer.strTitle.c_str(), sizeof(xbmcTimer.strTitle) - 1);
-    strncpy(xbmcTimer.strSummary, timer.strSummary.c_str(), sizeof(xbmcTimer.strSummary) - 1);
+    strAssign(xbmcTimer.strTitle, timer.strTitle);
+    strAssign(xbmcTimer.strSummary, timer.strSummary);
 
     xbmc_timers.push_back(std::move(xbmcTimer));
   }
@@ -959,7 +965,7 @@ PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer)
     XBMC->Log(LOG_ERROR, "%s - channel not found", __FUNCTION__);
     return PVR_ERROR_SERVER_ERROR;
   }
-  const auto epg_channel_i = epg->find(channel_i->strTvgId);
+  const auto epg_channel_i = epg->find(channel_i->strId);
   if (epg_channel_i == epg->cend())
   {
     XBMC->Log(LOG_ERROR, "%s - epg channel not found", __FUNCTION__);
