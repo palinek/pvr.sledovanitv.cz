@@ -122,10 +122,11 @@ bool PVRIptvData::LoadEPGJob()
     LoadPlayList();
   }
 
-  time_t min_epg;
+  time_t min_epg, max_epg;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     min_epg = m_epgMinTime;
+    max_epg = m_epgMaxTime;
   }
   bool updated = false;
   if (KeepAlive() && 0 == m_iLastEnd)
@@ -135,7 +136,7 @@ bool PVRIptvData::LoadEPGJob()
     updated = true;
   } else
   {
-    if (KeepAlive() && m_epgMaxTime > m_iLastEnd)
+    if (KeepAlive() && max_epg > m_iLastEnd)
     {
       LoadEPG(m_iLastEnd, false);
       updated = true;
