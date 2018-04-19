@@ -58,8 +58,8 @@ PVRIptvData::PVRIptvData(const std::string & userName
   , m_timers{std::make_shared<timer_container_t>()}
   , m_recordingAvailableDuration{0}
   , m_recordingRecordedDuration{0}
-  , m_epgMinTime{time(nullptr) - 86400}
-  , m_epgMaxTime{time(nullptr)}
+  , m_epgMinTime{time(nullptr)}
+  , m_epgMaxTime{time(nullptr) + 3600}
   , m_epgMaxDays{iEpgMaxDays}
   , m_bEGPLoaded{false}
   , m_iLastStart{0}
@@ -138,7 +138,7 @@ bool PVRIptvData::LoadEPGJob()
   {
     if (KeepAlive() && max_epg > m_iLastEnd)
     {
-      LoadEPG(m_iLastEnd, false);
+      LoadEPG(m_iLastEnd, max_epg - m_iLastEnd <= 3600);
       updated = true;
     }
     if (KeepAlive() && min_epg < m_iLastStart)
