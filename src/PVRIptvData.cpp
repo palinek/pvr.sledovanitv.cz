@@ -331,11 +331,18 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
 
   decltype (m_channels) channels;
   decltype (m_epg) epg;
+  time_t min_epg, max_epg;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     channels = m_channels;
     epg = m_epg;
+    min_epg = m_epgMinTime;
+    max_epg = m_epgMaxTime;
   }
+  // narrow the loaded time info (if needed)
+  m_iLastStart = std::max(m_iLastStart, min_epg);
+  m_iLastEnd = std::min(m_iLastEnd, max_epg);
+
   auto epg_copy = std::make_shared<epg_container_t>(*epg);
 
   Json::Value json_channels = root["channels"];
@@ -356,6 +363,10 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
         Json::Value epgEntry = epgData[j];
 
         const time_t start_time = ParseDateTime(epgEntry.get("startTime", "").asString());
+        const time_t end_time = ParseDateTime(epgEntry.get("endTime", "").asString());
+        // skip unneeded EPGs
+        if (start_time > max_epg || end_time < min_epg)
+          continue;
         PVRIptvEpgEntry iptventry;
         iptventry.iBroadcastId = start_time; // unique id for channel (even if time_t is wider, int should be enough for short period of time)
         iptventry.iGenreType = 0;
@@ -364,7 +375,7 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
         iptventry.strTitle = epgEntry.get("title", "").asString();
         iptventry.strPlot = epgEntry.get("description", "").asString();
         iptventry.startTime = start_time;
-        iptventry.endTime = ParseDateTime(epgEntry.get("endTime", "").asString());
+        iptventry.endTime = end_time;
         iptventry.strEventId = epgEntry.get("eventId", "").asString();
         iptventry.availableTimeshift = epgEntry.get("availability", "none").asString() == "timeshift";
 
