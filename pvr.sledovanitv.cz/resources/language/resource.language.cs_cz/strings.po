@@ -1,5 +1,5 @@
 # XBMC Media Center language file
-# Addon Name: PVR sledovanitv.cz
+# Addon Name: PVR sledovanitv.cz(unofficial)
 # Addon id: pvr.sledovanitv.cz
 # Addon version: 0.1.0
 # Addon Provider: nightik

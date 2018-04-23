@@ -211,7 +211,7 @@ PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
 
 const char *GetBackendName(void)
 {
-  static const char *strBackendName = "Sledovanitv.cz PVR Add-on";
+  static const char *strBackendName = "sledovanitv.cz(unofficial) PVR add-on";
   return strBackendName;
 }
 
