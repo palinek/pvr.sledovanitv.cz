@@ -132,7 +132,8 @@ public:
   PVRIptvData(const std::string & userName
       , const std::string & password
       , bool hdEnabled
-      , int iEpgMaxDays);
+      , int iEpgMaxDays
+      , unsigned fullChannelEpgRefresh);
   virtual ~PVRIptvData(void);
 
   int GetChannelsAmount(void);
@@ -202,6 +203,7 @@ private:
   time_t m_iLastEnd;
   time_t m_epgLastFullRefresh;
   bool m_bHdEnabled;
+  unsigned m_fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh
 
   ApiManager                        m_manager;
 };

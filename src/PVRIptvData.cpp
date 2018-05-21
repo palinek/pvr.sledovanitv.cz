@@ -47,7 +47,8 @@ template <int N> void strAssign(char (&dst)[N], const std::string & src)
 PVRIptvData::PVRIptvData(const std::string & userName
     , const std::string & password
     , bool hdEnabled
-    , int iEpgMaxDays)
+    , int iEpgMaxDays
+    , unsigned fullChannelEpgRefresh)
   : m_bKeepAlive{true}
   , m_bLoadRecordings{true}
   , m_bChannelsLoaded{false}
@@ -66,6 +67,7 @@ PVRIptvData::PVRIptvData(const std::string & userName
   , m_iLastEnd{0}
   , m_epgLastFullRefresh{m_epgMaxTime}
   , m_bHdEnabled{hdEnabled}
+  , m_fullChannelEpgRefresh{fullChannelEpgRefresh}
   , m_manager{userName, password}
 {
 
@@ -102,11 +104,9 @@ void PVRIptvData::SetLoadRecordings()
 
 bool PVRIptvData::LoadEPGJob()
 {
-  // trigger full refresh once a time (because for large timespans
-  // there doesn't need to be all future dates on the server)
-  // TODO: make the full refresh time configurable
+  // trigger full refresh once a time
   time_t now = time(nullptr);
-  if (m_epgLastFullRefresh + 86400/*one day*/ < now)
+  if (m_epgLastFullRefresh + m_fullChannelEpgRefresh < now)
   {
     XBMC->Log(LOG_INFO, "%s triggering EGP full refresh", __FUNCTION__);
     m_epgLastFullRefresh = now;

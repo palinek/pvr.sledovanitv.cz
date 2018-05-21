@@ -19,14 +19,26 @@ msgstr ""
 
 #settings labels
 
+msgctxt "#30010"
+msgid "Basic"
+msgstr "Základní"
+
 msgctxt "#30000"
 msgid "Login"
 msgstr "Login"
 
 msgctxt "#30001"
-msgid "Heslo"
+msgid "Password"
 msgstr "Heslo"
 
 msgctxt "#30002"
-msgid "Povolit přehrávání v HD, pokud je umožněno"
+msgid "Enable HD playback if possible"
 msgstr "Povolit přehrávání v HD, pokud je umožněno"
+
+msgctxt "#30100"
+msgid "Refresh times"
+msgstr "Časy aktualizace"
+
+msgctxt "#30101"
+msgid "Full refresh of channels/EPG (hours)"
+msgstr "Úplné obnovení kanálů/EPG (hodiny)"

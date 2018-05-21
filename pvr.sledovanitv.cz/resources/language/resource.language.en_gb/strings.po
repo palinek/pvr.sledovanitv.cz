@@ -19,6 +19,10 @@ msgstr ""
 
 #settings labels
 
+msgctxt "#30010"
+msgid "Basic"
+msgstr "Basic"
+
 msgctxt "#30000"
 msgid "Login"
 msgstr "Login"
@@ -30,3 +34,11 @@ msgstr "Password"
 msgctxt "#30002"
 msgid "Enable HD playback if possible"
 msgstr "Enable HD playback if possible"
+
+msgctxt "#30100"
+msgid "Refresh times"
+msgstr "Refresh times"
+
+msgctxt "#30101"
+msgid "Full refresh of channels/EPG (hours)"
+msgstr "Full refresh of channels/EPG (hours)"

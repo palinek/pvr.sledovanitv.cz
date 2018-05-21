@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-  <!-- M3U -->
+  <!-- basic -->
   <category label="30010">
     <setting id="userName" type="text" label="30000" default=""/>
     <setting id="password" type="text" option="hidden" label="30001" default=""/>
     <setting id="enableHd" type="bool" label="30002" default="true"/>
+  </category>
+
+  <!-- refresh -->
+  <category label="30100">
+    <setting id="fullChannelEpgRefresh" type="slider" label="30101" default="24" range="1,1,48" option="int"/>
   </category>
 
 </settings>
