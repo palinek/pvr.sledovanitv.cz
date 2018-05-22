@@ -114,6 +114,16 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
   }
   // make it seconds
   cfg.fullChannelEpgRefresh *= 3600;
+
+  if (!XBMC->GetSetting("loadingsRefresh", &cfg.loadingsRefresh))
+  {
+    cfg.loadingsRefresh = 60;
+  }
+
+  if (!XBMC->GetSetting("keepAliveDelay", &cfg.keepAliveDelay))
+  {
+    cfg.loadingsRefresh = 20;
+  }
 }
 
 extern "C" {

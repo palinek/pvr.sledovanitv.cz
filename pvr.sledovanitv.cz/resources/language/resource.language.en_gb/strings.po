@@ -46,3 +46,11 @@ msgstr "Refresh times"
 msgctxt "#30101"
 msgid "Interval of full channels/EPG refresh"
 msgstr "Interval of full channels/EPG refresh"
+
+msgctxt "#30102"
+msgid "Interval of recordings refresh"
+msgstr "Interval of recordings refresh"
+
+msgctxt "#30103"
+msgid "Interval of keep-alive calls"
+msgstr "Interval of keep-alive calls"

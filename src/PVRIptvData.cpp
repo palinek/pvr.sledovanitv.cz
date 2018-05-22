@@ -65,6 +65,8 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_iLastEnd{0}
   , m_bHdEnabled{cfg.hdEnabled}
   , m_fullChannelEpgRefresh{cfg.fullChannelEpgRefresh}
+  , m_loadingsRefresh{cfg.loadingsRefresh}
+  , m_keepAliveDelay{cfg.keepAliveDelay}
   , m_manager{std::move(cfg.userName), std::move(cfg.password)}
 {
 
@@ -252,9 +254,9 @@ void *PVRIptvData::Process(void)
 
   unsigned epg_delay = 0;
 
-  auto keep_alive_job = getCallLimiter(std::bind(&PVRIptvData::KeepAliveJob, this), std::chrono::seconds{20}, true);
+  auto keep_alive_job = getCallLimiter(std::bind(&PVRIptvData::KeepAliveJob, this), std::chrono::seconds{m_keepAliveDelay}, true);
   auto trigger_full_refresh = getCallLimiter(std::bind(&PVRIptvData::TriggerFullRefresh, this), std::chrono::seconds{m_fullChannelEpgRefresh}, true);
-  auto trigger_load_recordings = getCallLimiter(std::bind(&PVRIptvData::SetLoadRecordings, this), std::chrono::seconds{30}, true);
+  auto trigger_load_recordings = getCallLimiter(std::bind(&PVRIptvData::SetLoadRecordings, this), std::chrono::seconds{m_loadingsRefresh}, true);
   while (KeepAlive())
   {
     if (0 < epg_delay)

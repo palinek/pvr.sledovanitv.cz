@@ -127,7 +127,9 @@ struct PVRIptvConfiguration
   std::string password;
   bool hdEnabled;
   int epgMaxDays;
-  unsigned fullChannelEpgRefresh;
+  unsigned fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh
+  unsigned loadingsRefresh; //!< delay (seconds) between loadings refresh
+  unsigned keepAliveDelay; //!< delay (seconds) between keepalive calls
 };
 
 class PVRIptvData : public P8PLATFORM::CThread
@@ -203,7 +205,9 @@ private:
   time_t m_iLastStart;
   time_t m_iLastEnd;
   bool m_bHdEnabled;
-  unsigned m_fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh
+  unsigned m_fullChannelEpgRefresh;
+  unsigned m_loadingsRefresh;
+  unsigned m_keepAliveDelay;
 
   ApiManager                        m_manager;
 };
