@@ -130,6 +130,7 @@ struct PVRIptvConfiguration
   unsigned fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh
   unsigned loadingsRefresh; //!< delay (seconds) between loadings refresh
   unsigned keepAliveDelay; //!< delay (seconds) between keepalive calls
+  unsigned epgCheckDelay; //!< delay (seconds) between checking if EPG load is needed
 };
 
 class PVRIptvData : public P8PLATFORM::CThread
@@ -208,6 +209,7 @@ private:
   unsigned m_fullChannelEpgRefresh;
   unsigned m_loadingsRefresh;
   unsigned m_keepAliveDelay;
+  unsigned m_epgCheckDelay;
 
   ApiManager                        m_manager;
 };

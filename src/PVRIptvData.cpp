@@ -67,6 +67,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_fullChannelEpgRefresh{cfg.fullChannelEpgRefresh}
   , m_loadingsRefresh{cfg.loadingsRefresh}
   , m_keepAliveDelay{cfg.keepAliveDelay}
+  , m_epgCheckDelay{cfg.epgCheckDelay}
   , m_manager{std::move(cfg.userName), std::move(cfg.password)}
 {
 
@@ -118,6 +119,7 @@ void PVRIptvData::TriggerFullRefresh()
 
 bool PVRIptvData::LoadEPGJob()
 {
+  XBMC->Log(LOG_INFO, "%s will check if EGP loading needed", __FUNCTION__);
   time_t min_epg, max_epg;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
@@ -252,34 +254,40 @@ void *PVRIptvData::Process(void)
 
   LoadPlayList();
 
-  unsigned epg_delay = 0;
+  bool epg_updated = false;
 
   auto keep_alive_job = getCallLimiter(std::bind(&PVRIptvData::KeepAliveJob, this), std::chrono::seconds{m_keepAliveDelay}, true);
   auto trigger_full_refresh = getCallLimiter(std::bind(&PVRIptvData::TriggerFullRefresh, this), std::chrono::seconds{m_fullChannelEpgRefresh}, true);
   auto trigger_load_recordings = getCallLimiter(std::bind(&PVRIptvData::SetLoadRecordings, this), std::chrono::seconds{m_loadingsRefresh}, true);
+  auto epg_dummy_trigger = getCallLimiter([] {}, std::chrono::seconds{m_epgCheckDelay}, false); // using the CallLimiter just to test if the epg should be done
+
+  bool work_done = true;
   while (KeepAlive())
   {
-    if (0 < epg_delay)
+    if (!work_done)
       Sleep(1000);
+
+    work_done = false;
+
     LoadRecordingsJob();
 
     // trigger full refresh once a time
-    trigger_full_refresh.Call();
+    work_done |= trigger_full_refresh.Call();
     // trigger loading of recordings once a time
-    trigger_load_recordings.Call();
+    work_done |= trigger_load_recordings.Call();
 
-    if (0 == epg_delay)
+    if (epg_dummy_trigger.Call() || epg_updated)
     {
       // perform epg loading in next cycle if something updated in this one
-      if (!LoadEPGJob())
-        epg_delay = 60;
+      epg_updated = LoadEPGJob();
+      work_done = true;
     } else
     {
-      --epg_delay;
+      epg_updated = false;
     }
 
     // do keep alive call once a time
-    keep_alive_job.Call();
+    work_done |= keep_alive_job.Call();
   }
   XBMC->Log(LOG_DEBUG, "keepAlive:: thread stopped");
   return NULL;

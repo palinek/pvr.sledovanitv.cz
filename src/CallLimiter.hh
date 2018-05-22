@@ -53,11 +53,12 @@ public:
     /*!
      * \brief Execute the operator() on our callable object if the period
      * after previous passed.
+     * \return flag if underneath call was performed
      *
      * \note User of this object should call this method more often than
      * the period to achieve the desired behavior.
      */
-    void Call()
+    bool Call()
     {
       auto now = std::chrono::high_resolution_clock::now();
       if (mNextCall <= now)
@@ -65,7 +66,9 @@ public:
         while (mNextCall < now)
           mNextCall += mInterval;
         static_cast<void>(mCallable());
+        return true;
       }
+      return false;
     }
 
 private:

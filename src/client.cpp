@@ -124,6 +124,13 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
   {
     cfg.loadingsRefresh = 20;
   }
+
+  if (!XBMC->GetSetting("epgCheckDelay", &cfg.epgCheckDelay))
+  {
+    cfg.epgCheckDelay = 1;
+  }
+  // make it seconds
+  cfg.epgCheckDelay *= 60;
 }
 
 extern "C" {

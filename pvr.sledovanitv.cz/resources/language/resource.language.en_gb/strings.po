@@ -54,3 +54,7 @@ msgstr "Interval of recordings refresh"
 msgctxt "#30103"
 msgid "Interval of keep-alive calls"
 msgstr "Interval of keep-alive calls"
+
+msgctxt "#30104"
+msgid "Interval of EPG checks"
+msgstr "Interval of EPG checks"
