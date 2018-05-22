@@ -593,8 +593,6 @@ bool PVRIptvData::LoadPlayList(void)
     iptvchan.strGroupId = channel.get("group", "").asString();
     iptvchan.strStreamURL = channel.get("url", "").asString();
 
-    XBMC->Log(LOG_DEBUG, "Channel %s, URL: %s", iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
-
     std::string strUrl = iptvchan.strStreamURL;
 
     if (m_bHdEnabled)
@@ -604,6 +602,7 @@ bool PVRIptvData::LoadPlayList(void)
     }
 
     iptvchan.strStreamURL = strUrl;
+    XBMC->Log(LOG_DEBUG, "Channel %s, URL: %s", iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
     iptvchan.iUniqueId = i + 1;
     iptvchan.iChannelNumber = i + 1;
     iptvchan.strIconPath = channel.get("logoUrl", "").asString();
