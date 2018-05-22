@@ -121,14 +121,19 @@ typedef std::map<std::string, PVRIptvEpgChannel> epg_container_t;
 typedef std::vector<PVRIptvRecording> recording_container_t;
 typedef std::vector<PVRIptvTimer> timer_container_t;
 
+struct PVRIptvConfiguration
+{
+  std::string userName;
+  std::string password;
+  bool hdEnabled;
+  int epgMaxDays;
+  unsigned fullChannelEpgRefresh;
+};
+
 class PVRIptvData : public P8PLATFORM::CThread
 {
 public:
-  PVRIptvData(const std::string & userName
-      , const std::string & password
-      , bool hdEnabled
-      , int iEpgMaxDays
-      , unsigned fullChannelEpgRefresh);
+  PVRIptvData(PVRIptvConfiguration cfg);
   virtual ~PVRIptvData(void);
 
   int GetChannelsAmount(void);

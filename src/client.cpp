@@ -61,11 +61,6 @@ static int g_iEpgMaxDays = 0;
 CHelper_libXBMC_addon *XBMC = NULL;
 CHelper_libXBMC_pvr   *PVR  = NULL;
 
-std::string g_strUserName	= "";
-std::string g_strPassword	= "";
-bool g_bHdEnabled = true;
-int g_fullChannelEpgRefresh = 24;
-
 std::string PathCombine(const std::string &strPath, const std::string &strFileName)
 {
   std::string strResult = strPath;
@@ -93,33 +88,35 @@ std::string GetUserFilePath(const std::string &strFileName)
   return PathCombine(g_strUserPath, strFileName);
 }
 
-extern "C" {
-
-void ADDON_ReadSettings(void)
+static void ReadSettings(PVRIptvConfiguration & cfg)
 {
   char buffer[1024];
   //int iPathType = 0;
 
   if (XBMC->GetSetting("userName", &buffer))
   {
-    g_strUserName = buffer;
+    cfg.userName = buffer;
   }
 
-  if (XBMC->GetSetting("password", buffer))
+  if (XBMC->GetSetting("password", &buffer))
   {
-    g_strPassword = buffer;
+    cfg.password = buffer;
   }
 
-  if (!XBMC->GetSetting("enableHd", &g_bHdEnabled))
+  if (!XBMC->GetSetting("enableHd", &cfg.hdEnabled))
   {
-    g_bHdEnabled = true;
+    cfg.hdEnabled = true;
   }
 
-  if (!XBMC->GetSetting("fullChannelEpgRefresh", &g_fullChannelEpgRefresh))
+  if (!XBMC->GetSetting("fullChannelEpgRefresh", &cfg.fullChannelEpgRefresh))
   {
-    g_fullChannelEpgRefresh = 24;
+    cfg.fullChannelEpgRefresh = 24;
   }
+  // make it seconds
+  cfg.fullChannelEpgRefresh *= 3600;
 }
+
+extern "C" {
 
 ADDON_STATUS ADDON_Create(void* hdl, void* props)
 {
@@ -156,11 +153,12 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
     XBMC->CreateDirectory(g_strUserPath.c_str());
   }
 
-  ADDON_ReadSettings();
-  g_iEpgMaxDays = pvrprops->iEpgMaxDays;
+  PVRIptvConfiguration cfg;
+  ReadSettings(cfg);
+  cfg.epgMaxDays = pvrprops->iEpgMaxDays;
 
   m_data.reset(); // be sure that the previous one is deleted before new is constructed
-  m_data.reset(new PVRIptvData{g_strUserName, g_strPassword, g_bHdEnabled, g_iEpgMaxDays, static_cast<unsigned>(g_fullChannelEpgRefresh)/*hours*/ * 3600});
+  m_data.reset(new PVRIptvData{std::move(cfg)});
   m_CurStatus = ADDON_STATUS_OK;
 
   return m_CurStatus;

@@ -44,11 +44,7 @@ template <int N> void strAssign(char (&dst)[N], const std::string & src)
   dst[N - 1] = '\0'; // just to be sure
 }
 
-PVRIptvData::PVRIptvData(const std::string & userName
-    , const std::string & password
-    , bool hdEnabled
-    , int iEpgMaxDays
-    , unsigned fullChannelEpgRefresh)
+PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   : m_bKeepAlive{true}
   , m_bLoadRecordings{true}
   , m_bChannelsLoaded{false}
@@ -61,14 +57,14 @@ PVRIptvData::PVRIptvData(const std::string & userName
   , m_recordingRecordedDuration{0}
   , m_epgMinTime{time(nullptr)}
   , m_epgMaxTime{time(nullptr) + 3600}
-  , m_epgMaxDays{iEpgMaxDays}
+  , m_epgMaxDays{cfg.epgMaxDays}
   , m_bEGPLoaded{false}
   , m_iLastStart{0}
   , m_iLastEnd{0}
   , m_epgLastFullRefresh{m_epgMaxTime}
-  , m_bHdEnabled{hdEnabled}
-  , m_fullChannelEpgRefresh{fullChannelEpgRefresh}
-  , m_manager{userName, password}
+  , m_bHdEnabled{cfg.hdEnabled}
+  , m_fullChannelEpgRefresh{cfg.fullChannelEpgRefresh}
+  , m_manager{std::move(cfg.userName), std::move(cfg.password)}
 {
 
   SetEPGTimeFrame(m_epgMaxDays);
