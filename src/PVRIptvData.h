@@ -174,6 +174,7 @@ protected:
   void SetLoadRecordings();
   void LoginLoop();
   bool WaitForChannels() const;
+  void TriggerFullRefresh();
 
 protected:
   virtual void *Process(void) override;
@@ -201,7 +202,6 @@ private:
   bool m_bEGPLoaded;
   time_t m_iLastStart;
   time_t m_iLastEnd;
-  time_t m_epgLastFullRefresh;
   bool m_bHdEnabled;
   unsigned m_fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh
 

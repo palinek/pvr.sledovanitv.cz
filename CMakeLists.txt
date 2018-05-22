@@ -26,6 +26,7 @@ set(SLEDOVANITV_SOURCES src/client.cpp
 
 set(SLEDOVANITV_HEADERS src/client.h
   src/apimanager.h
+  src/CallLimiter.hh
   src/PVRIptvData.h)
 
 if(WIN32)

@@ -31,9 +31,11 @@
 #include <json/json.h>
 #include <chrono>
 #include <algorithm>
+#include <functional>
 
 #include "PVRIptvData.h"
 #include "apimanager.h"
+#include "CallLimiter.hh"
 
 using namespace std;
 using namespace ADDON;
@@ -61,7 +63,6 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_bEGPLoaded{false}
   , m_iLastStart{0}
   , m_iLastEnd{0}
-  , m_epgLastFullRefresh{m_epgMaxTime}
   , m_bHdEnabled{cfg.hdEnabled}
   , m_fullChannelEpgRefresh{cfg.fullChannelEpgRefresh}
   , m_manager{std::move(cfg.userName), std::move(cfg.password)}
@@ -98,26 +99,23 @@ void PVRIptvData::SetLoadRecordings()
   m_bLoadRecordings = true;
 }
 
+void PVRIptvData::TriggerFullRefresh()
+{
+  XBMC->Log(LOG_INFO, "%s triggering channels/EGP full refresh", __FUNCTION__);
+  m_iLastEnd = 0;
+  m_iLastStart = 0;
+
+  int epg_max_days = 0;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    epg_max_days = m_epgMaxDays;
+  }
+  SetEPGTimeFrame(epg_max_days);
+  LoadPlayList();
+}
+
 bool PVRIptvData::LoadEPGJob()
 {
-  // trigger full refresh once a time
-  time_t now = time(nullptr);
-  if (m_epgLastFullRefresh + m_fullChannelEpgRefresh < now)
-  {
-    XBMC->Log(LOG_INFO, "%s triggering EGP full refresh", __FUNCTION__);
-    m_epgLastFullRefresh = now;
-    m_iLastEnd = 0;
-    m_iLastStart = 0;
-
-    int epg_max_days = 0;
-    {
-      std::lock_guard<std::mutex> critical(m_mutex);
-      epg_max_days = m_epgMaxDays;
-    }
-    SetEPGTimeFrame(epg_max_days);
-    LoadPlayList();
-  }
-
   time_t min_epg, max_epg;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
@@ -128,7 +126,7 @@ bool PVRIptvData::LoadEPGJob()
   if (KeepAlive() && 0 == m_iLastEnd)
   {
     // the first run...load just needed data as soon as posible
-    LoadEPG(now, true);
+    LoadEPG(time(nullptr), true);
     updated = true;
   } else
   {
@@ -220,7 +218,6 @@ void PVRIptvData::KeepAliveJob()
   {
     LoginLoop();
   }
-  SetLoadRecordings();
 }
 
 void PVRIptvData::LoginLoop()
@@ -255,12 +252,19 @@ void *PVRIptvData::Process(void)
 
   unsigned epg_delay = 0;
 
-  unsigned int counter = 0;
+  auto keep_alive_job = getCallLimiter(std::bind(&PVRIptvData::KeepAliveJob, this), std::chrono::seconds{20}, true);
+  auto trigger_full_refresh = getCallLimiter(std::bind(&PVRIptvData::TriggerFullRefresh, this), std::chrono::seconds{m_fullChannelEpgRefresh}, true);
+  auto trigger_load_recordings = getCallLimiter(std::bind(&PVRIptvData::SetLoadRecordings, this), std::chrono::seconds{30}, true);
   while (KeepAlive())
   {
     if (0 < epg_delay)
       Sleep(1000);
     LoadRecordingsJob();
+
+    // trigger full refresh once a time
+    trigger_full_refresh.Call();
+    // trigger loading of recordings once a time
+    trigger_load_recordings.Call();
 
     if (0 == epg_delay)
     {
@@ -272,13 +276,8 @@ void *PVRIptvData::Process(void)
       --epg_delay;
     }
 
-    if (counter >= 20)
-    {
-      KeepAliveJob();
-      counter = 0;
-    }
-
-    ++counter;
+    // do keep alive call once a time
+    keep_alive_job.Call();
   }
   XBMC->Log(LOG_DEBUG, "keepAlive:: thread stopped");
   return NULL;
