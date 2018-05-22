@@ -121,11 +121,6 @@ typedef std::map<std::string, PVRIptvEpgChannel> epg_container_t;
 typedef std::vector<PVRIptvRecording> recording_container_t;
 typedef std::vector<PVRIptvTimer> timer_container_t;
 
-class DataContainer
-{
-public:
-};
-
 class PVRIptvData : public P8PLATFORM::CThread
 {
 public:
