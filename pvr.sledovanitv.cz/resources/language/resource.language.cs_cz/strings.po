@@ -19,6 +19,10 @@ msgstr ""
 
 #settings labels
 
+msgctxt "#30011"
+msgid "PVR sledovanitv.cz(unofficial)"
+msgstr "PVR sledovanitv.cz(neoficiální)"
+
 msgctxt "#30010"
 msgid "Basic"
 msgstr "Základní"
@@ -40,5 +44,5 @@ msgid "Refresh times"
 msgstr "Časy aktualizace"
 
 msgctxt "#30101"
-msgid "Full refresh of channels/EPG (hours)"
-msgstr "Úplné obnovení kanálů/EPG (hodiny)"
+msgid "Interval of full channels/EPG refresh"
+msgstr "Interval úplného obnovení kanálů/EPG"

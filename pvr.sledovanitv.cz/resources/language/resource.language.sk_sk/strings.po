@@ -1,5 +1,5 @@
 # XBMC Media Center language file
-# Addon Name: PVR sledovanitv.cz
+# Addon Name: PVR sledovanitv.cz(unofficial)
 # Addon id: pvr.sledovanitv.cz
 # Addon version: 0.1.0
 # Addon Provider: nightik
@@ -14,10 +14,14 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: sk\n"
+"Language: sk_SK\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #settings labels
+
+msgctxt "#30011"
+msgid "PVR sledovanitv.cz(unofficial)"
+msgstr "PVR sledovanitv.cz(neoficiálny)"
 
 msgctxt "#30010"
 msgid "Basic"
@@ -40,5 +44,5 @@ msgid "Refresh times"
 msgstr "Časy aktualizácie"
 
 msgctxt "#30101"
-msgid "Full refresh of channels/EPG (hours)"
-msgstr "Úplné obnovenie programov/EPG (hodiny)"
+msgid "Interval of full channels/EPG refresh"
+msgstr "Interval úplného obnovenia programov/EPG"
