@@ -36,8 +36,16 @@ msgid "Password"
 msgstr "Heslo"
 
 msgctxt "#30002"
-msgid "Enable HD playback if possible"
-msgstr "Povolit přehrávání v HD, pokud je umožněno"
+msgid "Stream quality"
+msgstr "Kvalita streamu"
+
+msgctxt "#30003"
+msgid "SD"
+msgstr "SD"
+
+msgctxt "#30004"
+msgid "HD"
+msgstr "HD"
 
 msgctxt "#30100"
 msgid "Refresh times"

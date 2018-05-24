@@ -41,6 +41,13 @@ namespace Json
 class ApiManager
 {
 public:
+  enum StreamQuality_t
+  {
+    SQ_DEFAULT = 0
+      , SQ_SD = 20
+      , SQ_HD = 40
+  };
+public:
   static std::string formatTime(time_t t);
 
 public:
@@ -48,7 +55,7 @@ public:
 
   bool pairDevice();
   bool login();
-  bool getPlaylist(Json::Value & root);
+  bool getPlaylist(StreamQuality_t quality, Json::Value & root);
   bool getStreamQualities(Json::Value & root);
   bool getEpg(time_t start, bool smallDuration, Json::Value & root);
   bool getPvr(Json::Value & root);

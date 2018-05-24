@@ -22,10 +22,16 @@
             <hidden>true</hidden>
           </control>
         </setting>
-        <setting id="enableHd" type="boolean" label="30002">
+        <setting id="streamQuality" type="integer" label="30002">
           <level>1</level>
-          <default>true</default>
-          <control type="toggle" />
+          <default>0</default> <!-- StreamQuality_t::SQ_DEFAULT -->
+          <constraints>
+            <options>
+              <option label="30003">20</option> <!-- StreamQuality_t::SQ_SD -->
+              <option label="30004">40</option> <!-- StreamQuality_t::SQ_HD -->
+            </options>
+          </constraints>
+          <control type="list" format="string" />
         </setting>
       </group>
     </category>

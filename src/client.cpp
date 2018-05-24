@@ -103,9 +103,9 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
     cfg.password = buffer;
   }
 
-  if (!XBMC->GetSetting("enableHd", &cfg.hdEnabled))
+  if (!XBMC->GetSetting("streamQuality", &cfg.streamQuality))
   {
-    cfg.hdEnabled = true;
+    cfg.streamQuality = 0;
   }
 
   if (!XBMC->GetSetting("fullChannelEpgRefresh", &cfg.fullChannelEpgRefresh))

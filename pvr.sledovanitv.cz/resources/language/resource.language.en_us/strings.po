@@ -36,8 +36,16 @@ msgid "Password"
 msgstr "Password"
 
 msgctxt "#30002"
-msgid "Enable HD playback if possible"
-msgstr "Enable HD playback if possible"
+msgid "Stream quality"
+msgstr "Stream quality"
+
+msgctxt "#30003"
+msgid "SD"
+msgstr "SD"
+
+msgctxt "#30004"
+msgid "HD"
+msgstr "HD"
 
 msgctxt "#30100"
 msgid "Refresh times"

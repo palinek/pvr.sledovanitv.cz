@@ -125,7 +125,7 @@ struct PVRIptvConfiguration
 {
   std::string userName;
   std::string password;
-  bool hdEnabled;
+  int streamQuality;
   int epgMaxDays;
   unsigned fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh
   unsigned loadingsRefresh; //!< delay (seconds) between loadings refresh
@@ -205,7 +205,7 @@ private:
   bool m_bEGPLoaded;
   time_t m_iLastStart;
   time_t m_iLastEnd;
-  bool m_bHdEnabled;
+  ApiManager::StreamQuality_t m_streamQuality;
   unsigned m_fullChannelEpgRefresh;
   unsigned m_loadingsRefresh;
   unsigned m_keepAliveDelay;

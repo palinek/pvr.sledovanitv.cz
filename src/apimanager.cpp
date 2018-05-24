@@ -268,10 +268,11 @@ bool ApiManager::login()
   return success;
 }
 
-bool ApiManager::getPlaylist(Json::Value & root)
+bool ApiManager::getPlaylist(StreamQuality_t quality, Json::Value & root)
 {
   ApiParamMap params;
   params["format"] = "androidtv";
+  params["quality"] = std::to_string(quality);
   return isSuccess(apiCall("playlist", params), root);
 }
 

@@ -63,7 +63,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_bEGPLoaded{false}
   , m_iLastStart{0}
   , m_iLastEnd{0}
-  , m_bHdEnabled{cfg.hdEnabled}
+  , m_streamQuality{static_cast<ApiManager::StreamQuality_t>(cfg.streamQuality)}
   , m_fullChannelEpgRefresh{cfg.fullChannelEpgRefresh}
   , m_loadingsRefresh{cfg.loadingsRefresh}
   , m_keepAliveDelay{cfg.keepAliveDelay}
@@ -574,7 +574,7 @@ bool PVRIptvData::LoadPlayList(void)
 
   Json::Value root;
 
-  if (!m_manager.getPlaylist(root))
+  if (!m_manager.getPlaylist(m_streamQuality, root))
   {
     XBMC->Log(LOG_NOTICE, "Cannot get/parse playlist.");
     return false;
@@ -597,16 +597,6 @@ bool PVRIptvData::LoadPlayList(void)
     iptvchan.strChannelName = channel.get("name", "").asString();
     iptvchan.strGroupId = channel.get("group", "").asString();
     iptvchan.strStreamURL = channel.get("url", "").asString();
-
-    std::string strUrl = iptvchan.strStreamURL;
-
-    if (m_bHdEnabled)
-    {
-      size_t qIndex = strUrl.find("quality");
-      strUrl.replace(strUrl.begin() + qIndex, strUrl.end(), "quality=40");
-    }
-
-    iptvchan.strStreamURL = strUrl;
     XBMC->Log(LOG_DEBUG, "Channel %s, URL: %s", iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
     iptvchan.iUniqueId = i + 1;
     iptvchan.iChannelNumber = i + 1;
