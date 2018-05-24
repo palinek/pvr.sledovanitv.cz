@@ -29,7 +29,7 @@
 #include "kodi/libXBMC_pvr.h"
 //#include "libXBMC_gui.h"
 
-#define PVR_CLIENT_VERSION     "2.2.0"
+#define PVR_CLIENT_VERSION     "2.3.0"
 
 extern ADDON::CHelper_libXBMC_addon *XBMC;
 extern CHelper_libXBMC_pvr          *PVR;
