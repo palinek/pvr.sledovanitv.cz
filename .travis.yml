@@ -11,11 +11,27 @@ matrix:
   include:
     - os: linux
       dist: trusty
-      sudo: required
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          update: true
+          packages:
+            - gcc-7
+            - g++-7
       compiler: gcc
+      script:
+        - CC=gcc-7 CXX=g++-7 make
     - os: linux
       dist: trusty
-      sudo: required
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          update: true
+          packages:
+            - gcc-7
+            - g++-7
       compiler: clang
     - os: osx
       osx_image: xcode9
