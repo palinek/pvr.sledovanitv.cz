@@ -33,6 +33,7 @@
 
 #include <iostream>
 #include <memory>
+#include <atomic>
 
 using namespace ADDON;
 
@@ -174,8 +175,8 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   ReadSettings(cfg);
   cfg.epgMaxDays = pvrprops->iEpgMaxDays;
 
-  m_data.reset(); // be sure that the previous one is deleted before new is constructed
-  m_data.reset(new PVRIptvData{std::move(cfg)});
+  std::atomic_store(&m_data, std::shared_ptr<PVRIptvData>{nullptr}); // be sure that the previous one is deleted before new is constructed
+  std::atomic_store(&m_data, std::make_shared<PVRIptvData>(std::move(cfg)));
   m_CurStatus = ADDON_STATUS_OK;
 
   return m_CurStatus;
@@ -188,7 +189,7 @@ ADDON_STATUS ADDON_GetStatus()
 
 void ADDON_Destroy()
 {
-  m_data.reset();
+  std::atomic_store(&m_data, std::shared_ptr<PVRIptvData>{nullptr});
   m_CurStatus = ADDON_STATUS_UNKNOWN;
 }
 
@@ -250,7 +251,7 @@ const char *GetConnectionString(void)
 
 PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetDriveSpace(iTotal, iUsed);
 
@@ -259,7 +260,7 @@ PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 
 PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetEPGForChannel(handle, channel, iStart, iEnd);
 
@@ -268,7 +269,7 @@ PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time
 
 PVR_ERROR SetEPGTimeFrame(int iDays)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->SetEPGTimeFrame(iDays);
 
@@ -277,7 +278,7 @@ PVR_ERROR SetEPGTimeFrame(int iDays)
 
 PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->IsEPGTagPlayable(tag, bIsPlayable);
 
@@ -286,7 +287,7 @@ PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable)
 
 PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (!tag || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
@@ -306,7 +307,7 @@ PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* propert
 
 int GetChannelsAmount(void)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetChannelsAmount();
 
@@ -315,7 +316,7 @@ int GetChannelsAmount(void)
 
 PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetChannels(handle, bRadio);
 
@@ -324,7 +325,7 @@ PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio)
 
 PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (!channel || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
@@ -344,7 +345,7 @@ PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE
 
 int GetChannelGroupsAmount(void)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetChannelGroupsAmount();
 
@@ -353,7 +354,7 @@ int GetChannelGroupsAmount(void)
 
 PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetChannelGroups(handle, bRadio);
 
@@ -362,7 +363,7 @@ PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 
 PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetChannelGroupMembers(handle, group);
 
@@ -388,7 +389,7 @@ int GetRecordingsAmount(bool deleted)
   if (deleted)
     return 0;
 
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetRecordingsAmount();
 
@@ -401,7 +402,7 @@ PVR_ERROR GetRecordings(ADDON_HANDLE handle, bool deleted)
   if (deleted)
     return PVR_ERROR_NO_ERROR;
 
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetRecordings(handle);
 
@@ -410,7 +411,7 @@ PVR_ERROR GetRecordings(ADDON_HANDLE handle, bool deleted)
 
 PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (!recording || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
@@ -438,7 +439,7 @@ bool CanSeekStream(void)
 /** TIMER FUNCTIONS */
 int GetTimersAmount(void)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetTimersAmount();
 
@@ -447,7 +448,7 @@ int GetTimersAmount(void)
 
 PVR_ERROR GetTimers(ADDON_HANDLE handle)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->GetTimers(handle);
 
@@ -506,7 +507,7 @@ PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
 PVR_ERROR AddTimer(const PVR_TIMER &timer)
 {
   XBMC->Log(LOG_DEBUG, "%s - type %d", __FUNCTION__, timer.iTimerType);
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (!data)
     return PVR_ERROR_SERVER_ERROR;
 
@@ -515,7 +516,7 @@ PVR_ERROR AddTimer(const PVR_TIMER &timer)
 
 PVR_ERROR DeleteTimer(const PVR_TIMER &timer, bool bForceDelete)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->DeleteRecord(timer.iClientIndex);
 
@@ -524,7 +525,7 @@ PVR_ERROR DeleteTimer(const PVR_TIMER &timer, bool bForceDelete)
 
 PVR_ERROR DeleteRecording(const PVR_RECORDING &recording)
 {
-  auto data = m_data;
+  auto data = std::atomic_load(&m_data);
   if (data)
     return data->DeleteRecord(recording.strRecordingId);
 

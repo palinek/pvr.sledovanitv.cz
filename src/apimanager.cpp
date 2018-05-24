@@ -38,6 +38,7 @@
 #include <ctime>
 #include <sstream>
 #include <algorithm>
+#include <atomic>
 
 using namespace ADDON;
 
@@ -94,7 +95,7 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & pa
 {
   if (putSessionVar)
   {
-    auto session_id = m_sessionId;
+    auto session_id = std::atomic_load(&m_sessionId);
     // if we need to put the sessionVar, but not logged in... do nothing
     if (session_id->empty())
       return std::string();
@@ -246,24 +247,24 @@ bool ApiManager::login()
 
   Json::Value root;
 
-  auto new_session_id = std::make_shared<std::string>();
+  std::string new_session_id;
   if (isSuccess(apiCall("device-login", param, false), root))
   {
-    *new_session_id = root.get("PHPSESSID", "").asString();
+    new_session_id = root.get("PHPSESSID", "").asString();
 
-    if (new_session_id->empty())
+    if (new_session_id.empty())
     {
       XBMC->Log(LOG_ERROR, "Cannot perform device login");
     }
     else
     {
-      XBMC->Log(LOG_INFO, "Device logged in. Session ID: %s", new_session_id->c_str());
+      XBMC->Log(LOG_INFO, "Device logged in. Session ID: %s", new_session_id.c_str());
     }
   }
 
-  const bool success = !new_session_id->empty();
+  const bool success = !new_session_id.empty();
 
-  m_sessionId = new_session_id;
+  std::atomic_store(&m_sessionId, std::make_shared<const std::string>(std::move(new_session_id)));
 
   return success;
 }
@@ -357,7 +358,7 @@ bool ApiManager::keepAlive()
 
 bool ApiManager::loggedIn() const
 {
-  auto session_id = m_sessionId;
+  auto session_id = std::atomic_load(&m_sessionId);
   return !session_id->empty();
 }
 
@@ -383,7 +384,7 @@ std::string ApiManager::buildQueryString(const ApiParamMap & paramMap, bool putS
     strOut += param.first + "=" + urlEncode(param.second);
   }
 
-  std::shared_ptr<const std::string> session_id = m_sessionId;
+  std::shared_ptr<const std::string> session_id = std::atomic_load(&m_sessionId);
 
   if (putSessionVar)
     strOut += "&PHPSESSID=";

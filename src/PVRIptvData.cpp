@@ -204,7 +204,10 @@ void PVRIptvData::ReleaseUnneededEPG()
         (*epg_copy)[epg_channel.first] = epg_channel.second;
     }
 
-    m_epg = std::move(epg_copy);
+    {
+      std::lock_guard<std::mutex> critical(m_mutex);
+      m_epg = std::move(epg_copy);
+    }
   }
 
   // narrow the loaded time info (if needed)
@@ -422,7 +425,10 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
   }
 
   // atomic assign new version of the epg all epgs
-  m_epg = epg_copy;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    m_epg = epg_copy;
+  }
 
   m_bEGPLoaded = true;
   XBMC->Log(LOG_NOTICE, "EPG Loaded.");
@@ -641,7 +647,12 @@ bool PVRIptvData::LoadPlayList(void)
 
 int PVRIptvData::GetChannelsAmount(void)
 {
-  auto channels = m_channels;
+  decltype (m_channels) channels;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    channels = m_channels;
+  }
+
   return channels->size();
 }
 
@@ -650,7 +661,11 @@ PVR_ERROR PVRIptvData::GetChannels(ADDON_HANDLE handle, bool bRadio)
   XBMC->Log(LOG_DEBUG, "%s %s", __FUNCTION__, bRadio ? "radio" : "tv");
   WaitForChannels();
 
-  auto channels = m_channels;
+  decltype (m_channels) channels;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    channels = m_channels;
+  }
 
   std::vector<PVR_CHANNEL> xbmc_channels;
   for (const auto & channel : *channels)
@@ -682,7 +697,11 @@ PVR_ERROR PVRIptvData::GetChannels(ADDON_HANDLE handle, bool bRadio)
 
 PVR_ERROR PVRIptvData::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl) const
 {
-  auto channels = m_channels;
+  decltype (m_channels) channels;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    channels = m_channels;
+  }
 
   auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [channel] (const PVRIptvChannel & c) { return c.iChannelNumber == channel->iUniqueId; });
   if (channels->cend() == channel_i)
@@ -698,7 +717,11 @@ PVR_ERROR PVRIptvData::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::stri
 
 int PVRIptvData::GetChannelGroupsAmount(void)
 {
-  auto groups = m_groups;
+  decltype (m_groups) groups;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    groups = m_groups;
+  }
   return groups->size();
 }
 
@@ -706,7 +729,11 @@ PVR_ERROR PVRIptvData::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
   WaitForChannels();
 
-  auto groups = m_groups;
+  decltype (m_groups) groups;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    groups = m_groups;
+  }
 
   std::vector<PVR_CHANNEL_GROUP> xbmc_groups;
   for (const auto & group : *groups)
@@ -872,13 +899,21 @@ int PVRIptvData::ParseDateTime(std::string strDate)
 
 int PVRIptvData::GetRecordingsAmount()
 {
-  auto recordings = m_recordings;
+  decltype (m_recordings) recordings;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    recordings = m_recordings;
+  }
   return recordings->size();
 }
 
 PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
 {
-  auto recordings = m_recordings;
+  decltype (m_recordings) recordings;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    recordings = m_recordings;
+  }
   std::vector<PVR_RECORDING> xbmc_records;
   auto insert_lambda = [&xbmc_records] (const PVRIptvRecording & rec)
   {
@@ -910,7 +945,11 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
 
 PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const PVR_RECORDING* recording, std::string & streamUrl) const
 {
-  auto recordings = m_recordings;
+  decltype (m_recordings) recordings;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    recordings = m_recordings;
+  }
   auto rec_i = std::find_if(recordings->cbegin(), recordings->cend(), [recording] (const PVRIptvRecording & r) { return recording->strRecordingId == r.strRecordId; });
   if (recordings->cend() == rec_i)
     return PVR_ERROR_INVALID_PARAMETERS;
@@ -921,14 +960,22 @@ PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const PVR_RECORDING* recording, std
 
 int PVRIptvData::GetTimersAmount()
 {
-  const auto timers = m_timers;
+  decltype (m_timers) timers;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    timers = m_timers;
+  }
   return timers->size();
 }
 
 
 PVR_ERROR PVRIptvData::GetTimers(ADDON_HANDLE handle)
 {
-  const auto timers = m_timers;
+  decltype (m_timers) timers;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    timers = m_timers;
+  }
 
   std::vector<PVR_TIMER> xbmc_timers;
   for (const auto & timer : *timers)
