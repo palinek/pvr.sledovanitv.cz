@@ -2,7 +2,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/02qaoie8tcv4klnf/branch/master?svg=true)](https://ci.appveyor.com/project/palinek/pvr-sledovanitv-cz/branch/master)
 
 # sledovanitv.cz PVR
-unofficial sledovanitv.cz PVR client addon for [Kodi](http://kodi.tv)  
+unofficial [sledovanitv.cz](https://sledovanitv.cz) PVR client addon for [Kodi](http://kodi.tv)  
 (this client is not developed nor officially supported by sledovanitv.cz)
 
 ## Build instructions
