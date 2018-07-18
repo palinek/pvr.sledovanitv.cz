@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="pvr.sledovanitv.cz"
-  version="2.4.1"
-  name="PVR sledovanitv.cz(unofficial)"
+  version="1.0.0"
+  name="PVR Client for sledovanitv.cz (unofficial)"
   provider-name="Palo Kisa">
   <requires>@ADDON_DEPENDS@</requires>
   <extension
     point="xbmc.pvrclient"
     library_@PLATFORM@="@LIBRARY_FILENAME@"/>
   <extension point="xbmc.addon.metadata">
-    <summary lang="en">Kodi PVR addon for sledovanitv.cz, unofficial</summary>
+    <summary lang="en">Kodi's frontend for sledovanitv.cz, unofficial</summary>
     <summary lang="cs">Kodi PVR doplněk pro sledovanitv.cz, neoficiální</summary>
     <summary lang="sk">Kodi PVR dopnok pre sledovanitv.cz, neoficiálny</summary>
     <description lang="en">PVR Client for sledovanitv.cz. Supports stream of live TV/Radio, recordings and EPG. This client is not developed nor officially supported by sledovanitv.cz.</description>

@@ -29,7 +29,6 @@
 #include "p8-platform/util/util.h"
 #include "PVRIptvData.h"
 #include "kodi/xbmc_pvr_dll.h"
-#include "kodi/libKODI_guilib.h"
 
 #include <iostream>
 #include <memory>
@@ -92,7 +91,6 @@ std::string GetUserFilePath(const std::string &strFileName)
 static void ReadSettings(PVRIptvConfiguration & cfg)
 {
   char buffer[1024];
-  //int iPathType = 0;
 
   if (XBMC->GetSetting("userName", &buffer))
   {
@@ -233,13 +231,13 @@ PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
 
 const char *GetBackendName(void)
 {
-  static const char *strBackendName = "sledovanitv.cz(unofficial) PVR add-on";
+  static const char *strBackendName = "PVR sledovanitv.cz (unofficial)";
   return strBackendName;
 }
 
 const char *GetBackendVersion(void)
 {
-  static std::string strBackendVersion = PVR_CLIENT_VERSION;
+  static std::string strBackendVersion = "";
   return strBackendVersion.c_str();
 }
 
@@ -374,15 +372,10 @@ PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &g
 
 PVR_ERROR SignalStatus(PVR_SIGNAL_STATUS &signalStatus)
 {
-  snprintf(signalStatus.strAdapterName, sizeof(signalStatus.strAdapterName), "Sledovanitv.cz");
+  snprintf(signalStatus.strAdapterName, sizeof(signalStatus.strAdapterName), "sledovanitv.cz");
   snprintf(signalStatus.strAdapterStatus, sizeof(signalStatus.strAdapterStatus), "OK");
 
   return PVR_ERROR_NO_ERROR;
-}
-
-bool CanPauseStream(void)
-{
-  return true;
 }
 
 int GetRecordingsAmount(bool deleted)
@@ -430,12 +423,6 @@ PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED
    *iPropertiesCount = 1;
   return PVR_ERROR_NO_ERROR;
 
-}
-
-/** SEEK */
-bool CanSeekStream(void)
-{
-  return true;
 }
 
 /** TIMER FUNCTIONS */
@@ -534,7 +521,22 @@ PVR_ERROR DeleteRecording(const PVR_RECORDING &recording)
   return PVR_ERROR_SERVER_ERROR;
 }
 
+bool CanSeekStream(void)
+{
+  return false;
+}
+
+bool CanPauseStream(void)
+{
+  return false;
+}
+
 bool IsTimeshifting(void)
+{
+  return false;
+}
+
+bool IsRealTimeStream()
 {
   return true;
 }
@@ -583,7 +585,6 @@ void OnSystemSleep() { }
 void OnSystemWake() { }
 void OnPowerSavingActivated() { }
 void OnPowerSavingDeactivated() { }
-bool IsRealTimeStream() { return true; }
 PVR_ERROR GetDescrambleInfo(PVR_DESCRAMBLE_INFO*) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR SetRecordingLifetime(const PVR_RECORDING*) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR GetStreamProperties(PVR_STREAM_PROPERTIES*) { return PVR_ERROR_NOT_IMPLEMENTED; }
