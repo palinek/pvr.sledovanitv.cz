@@ -283,6 +283,11 @@ PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable)
   return PVR_ERROR_SERVER_ERROR;
 }
 
+PVR_ERROR IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable)
+{
+  return IsEPGTagPlayable(tag, bIsRecordable);
+}
+
 PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
   auto data = std::atomic_load(&m_data);
@@ -449,7 +454,7 @@ PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
   XBMC->Log(LOG_DEBUG, "%s - size: %d", __FUNCTION__, *size);
   int pos = 0;
   types[pos].iId = pos + 1;
-  types[pos].iAttributes = PVR_TIMER_TYPE_IS_MANUAL | PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME;
+  types[pos].iAttributes = PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME;
   types[pos].strDescription[0] = '\0'; // let Kodi generate the description
   types[pos].iPrioritiesSize = 0; // no priorities needed
   //types[pos].priorities
@@ -589,7 +594,6 @@ PVR_ERROR GetDescrambleInfo(PVR_DESCRAMBLE_INFO*) { return PVR_ERROR_NOT_IMPLEME
 PVR_ERROR SetRecordingLifetime(const PVR_RECORDING*) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR GetStreamProperties(PVR_STREAM_PROPERTIES*) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR GetStreamTimes(PVR_STREAM_TIMES*) { return PVR_ERROR_NOT_IMPLEMENTED; }
-PVR_ERROR IsEPGTagRecordable(const EPG_TAG*, bool*) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR GetEPGTagEdl(const EPG_TAG* epgTag, PVR_EDL_ENTRY edl[], int *size) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR GetStreamReadChunkSize(int* chunksize) { return PVR_ERROR_NOT_IMPLEMENTED; }
 
