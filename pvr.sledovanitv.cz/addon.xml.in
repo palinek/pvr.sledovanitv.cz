@@ -10,8 +10,8 @@
     library_@PLATFORM@="@LIBRARY_FILENAME@"/>
   <extension point="xbmc.addon.metadata">
     <summary lang="en">Kodi's frontend for sledovanitv.cz, unofficial</summary>
-    <summary lang="cs">Kodi PVR doplněk pro sledovanitv.cz, neoficiální</summary>
-    <summary lang="sk">Kodi PVR dopnok pre sledovanitv.cz, neoficiálny</summary>
+    <summary lang="cs">Kodi frontend pro sledovanitv.cz, neoficiální</summary>
+    <summary lang="sk">Kodi frontend pre sledovanitv.cz, neoficiálny</summary>
     <description lang="en">PVR Client for sledovanitv.cz. Supports stream of live TV/Radio, recordings and EPG. This client is not developed nor officially supported by sledovanitv.cz.</description>
     <description lang="cs">PVR klient pro službu sledovanitv.cz. Podporuje živé vysílání TV/rádia, nahrávky a EPG. Tento klient není vyvíjen ani oficiálne podporován ze strany sledovanitv.cz.</description>
     <description lang="sk">PVR klient pre službu sledovanitv.cz. Podporuje živé vysielanie TV/rádia, nahrávky a EPG. Tento klient nie je vyvíjaný ani oficiálne podporovaný zo strany sledovanitv.cz.</description>
