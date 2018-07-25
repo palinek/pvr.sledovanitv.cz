@@ -191,9 +191,10 @@ bool ApiManager::pairDevice()
 
     params["username"] = m_userName;
     params["password"] = m_userPassword;
-    params["type"] = "xbmc";
+    params["type"] = "androidportable";
     params["product"] = hostName;
     params["serial"] = macAddr;
+    params["unit"] = "default";
 
     pairJson = apiCall("create-pairing", params, false);
   }
@@ -244,6 +245,7 @@ bool ApiManager::login()
   ApiParamMap param;
   param["deviceId"] = m_deviceId;
   param["password"] = m_password;
+  param["unit"] = "default";
 
   Json::Value root;
 
@@ -263,6 +265,12 @@ bool ApiManager::login()
   }
 
   const bool success = !new_session_id.empty();
+  if (!success)
+  {
+    m_deviceId.clear();
+    m_password.clear();
+    createPairFile(std::string{}); // truncate any "old" pairing response
+  }
 
   std::atomic_store(&m_sessionId, std::make_shared<const std::string>(std::move(new_session_id)));
 
@@ -272,7 +280,7 @@ bool ApiManager::login()
 bool ApiManager::getPlaylist(StreamQuality_t quality, Json::Value & root)
 {
   ApiParamMap params;
-  params["format"] = "androidtv";
+  params["format"] = "m3u8";
   params["quality"] = std::to_string(quality);
   return isSuccess(apiCall("playlist", params), root);
 }
@@ -416,9 +424,10 @@ void ApiManager::createPairFile(const std::string &content)
 {
   std::string url = GetUserFilePath(PAIR_FILE);
 
-  void *fileHandle = XBMC->OpenFileForWrite(url.c_str(), false);
+  void *fileHandle = XBMC->OpenFileForWrite(url.c_str(), true);
   if (fileHandle)
   {
     XBMC->WriteFile(fileHandle, content.c_str(), content.length());
+    XBMC->CloseFile(fileHandle);
   }
 }

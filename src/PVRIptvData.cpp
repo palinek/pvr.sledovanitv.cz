@@ -237,7 +237,7 @@ void PVRIptvData::LoginLoop()
       if (m_manager.login())
         should_try = false;
       else
-        login_delay = 120; // try in two minutes
+        login_delay = 30; // try in 30 seconds
     }
     Sleep(1000);
   }
