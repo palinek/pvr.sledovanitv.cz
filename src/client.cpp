@@ -130,6 +130,11 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
   }
   // make it seconds
   cfg.epgCheckDelay *= 60;
+
+  if (!XBMC->GetSetting("useH265", &cfg.useH265))
+  {
+    cfg.useH265 = false;
+  }
 }
 
 extern "C" {

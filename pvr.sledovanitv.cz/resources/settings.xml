@@ -33,6 +33,11 @@
           </constraints>
           <control type="list" format="string" />
         </setting>
+        <setting id="useH265" type="boolean" label="30005">
+          <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
       </group>
     </category>
 

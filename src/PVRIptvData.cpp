@@ -68,6 +68,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_loadingsRefresh{cfg.loadingsRefresh}
   , m_keepAliveDelay{cfg.keepAliveDelay}
   , m_epgCheckDelay{cfg.epgCheckDelay}
+  , m_useH265{cfg.useH265}
   , m_manager{std::move(cfg.userName), std::move(cfg.password)}
 {
 
@@ -580,7 +581,7 @@ bool PVRIptvData::LoadPlayList(void)
 
   Json::Value root;
 
-  if (!m_manager.getPlaylist(m_streamQuality, root))
+  if (!m_manager.getPlaylist(m_streamQuality, m_useH265, root))
   {
     XBMC->Log(LOG_NOTICE, "Cannot get/parse playlist.");
     return false;

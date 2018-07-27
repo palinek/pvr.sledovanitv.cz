@@ -131,6 +131,7 @@ struct PVRIptvConfiguration
   unsigned loadingsRefresh; //!< delay (seconds) between loadings refresh
   unsigned keepAliveDelay; //!< delay (seconds) between keepalive calls
   unsigned epgCheckDelay; //!< delay (seconds) between checking if EPG load is needed
+  bool useH265; //!< flag, if h265 codec should be requested
 };
 
 class PVRIptvData : public P8PLATFORM::CThread
@@ -210,6 +211,7 @@ private:
   unsigned m_loadingsRefresh;
   unsigned m_keepAliveDelay;
   unsigned m_epgCheckDelay;
+  bool m_useH265;
 
   ApiManager                        m_manager;
 };

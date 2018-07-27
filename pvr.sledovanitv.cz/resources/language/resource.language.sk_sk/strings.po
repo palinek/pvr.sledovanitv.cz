@@ -42,6 +42,10 @@ msgctxt "#30004"
 msgid "HD"
 msgstr "HD"
 
+msgctxt "#30005"
+msgid "Use HEVC (h.265) codec"
+msgstr "Použiť HEVC (h.265) kodek"
+
 msgctxt "#30100"
 msgid "Refresh times"
 msgstr "Časy aktualizácie"
