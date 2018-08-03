@@ -49,6 +49,7 @@ struct PVRIptvEpgEntry
   std::string strEventId;
   std::string strStreamURL;
   bool availableTimeshift;
+  std::string strRecordId; // optionally recorded
 };
 
 typedef std::map<time_t, PVRIptvEpgEntry> epg_entry_container_t;
@@ -145,6 +146,7 @@ public:
   PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl) const;
   PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
   PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const;
+  PVR_ERROR IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const;
   PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl) const;
   PVR_ERROR SetEPGTimeFrame(int iDays);
   int GetChannelGroupsAmount(void);
@@ -152,7 +154,7 @@ public:
   PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
   int GetRecordingsAmount();
   PVR_ERROR GetRecordings(ADDON_HANDLE handle);
-  PVR_ERROR GetRecordingStreamUrl(const PVR_RECORDING* recording, std::string & streamUrl) const;
+  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl) const;
   void GetRecordingsUrls();
   int GetTimersAmount();
   PVR_ERROR GetTimers(ADDON_HANDLE handle);
@@ -179,6 +181,7 @@ protected:
   void LoginLoop();
   bool WaitForChannels() const;
   void TriggerFullRefresh();
+  bool RecordingExists(const std::string & recordId) const;
 
 protected:
   virtual void *Process(void) override;

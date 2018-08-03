@@ -386,7 +386,9 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
         iptventry.startTime = start_time;
         iptventry.endTime = end_time;
         iptventry.strEventId = epgEntry.get("eventId", "").asString();
-        iptventry.availableTimeshift = epgEntry.get("availability", "none").asString() == "timeshift";
+        std::string availability = epgEntry.get("availability", "none").asString();
+        iptventry.availableTimeshift = availability == "timeshift" || availability == "pvr";
+        iptventry.strRecordId = epgEntry["recordId"].asString();
 
         XBMC->Log(LOG_DEBUG, "Loading TV show: %s - %s, start=%s", strChId.c_str(), iptventry.strTitle.c_str(), epgEntry.get("startTime", "").asString().c_str());
 
@@ -850,6 +852,25 @@ PVR_ERROR PVRIptvData::IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) c
   return PVR_ERROR_NO_ERROR;
 }
 
+PVR_ERROR PVRIptvData::IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const
+{
+  decltype (m_channels) channels;
+  decltype (m_epg) epg;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    channels = m_channels;
+    epg = m_epg;
+  }
+
+  epg_entry_container_t::const_iterator epg_i;
+  PVR_ERROR ret = GetEPGData(tag, channels.get(), epg.get(), epg_i);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
+
+  *bIsRecordable = epg_i->second.availableTimeshift && !RecordingExists(epg_i->second.strRecordId) && tag->startTime < time(nullptr);
+  return PVR_ERROR_NO_ERROR;
+}
+
 PVR_ERROR PVRIptvData::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl) const
 {
   decltype (m_channels) channels;
@@ -864,6 +885,9 @@ PVR_ERROR PVRIptvData::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamU
   PVR_ERROR ret = GetEPGData(tag, channels.get(), epg.get(), epg_i);
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
+
+  if (RecordingExists(epg_i->second.strRecordId))
+    return GetRecordingStreamUrl(epg_i->second.strRecordId, streamUrl);
 
   int duration;
   if (!m_manager.getTimeShiftInfo(epg_i->second.strEventId, streamUrl, duration))
@@ -944,19 +968,29 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const PVR_RECORDING* recording, std::string & streamUrl) const
+PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl) const
 {
   decltype (m_recordings) recordings;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     recordings = m_recordings;
   }
-  auto rec_i = std::find_if(recordings->cbegin(), recordings->cend(), [recording] (const PVRIptvRecording & r) { return recording->strRecordingId == r.strRecordId; });
+  auto rec_i = std::find_if(recordings->cbegin(), recordings->cend(), [recording] (const PVRIptvRecording & r) { return recording == r.strRecordId; });
   if (recordings->cend() == rec_i)
     return PVR_ERROR_INVALID_PARAMETERS;
 
   streamUrl = rec_i->strStreamUrl;
   return PVR_ERROR_NO_ERROR;
+}
+
+bool PVRIptvData::RecordingExists(const std::string & recordId) const
+{
+  decltype (m_recordings) recordings;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    recordings = m_recordings;
+  }
+  return recordings->cend() != std::find_if(recordings->cbegin(), recordings->cend(), [&recordId] (const PVRIptvRecording & r) { return recordId == r.strRecordId; });
 }
 
 int PVRIptvData::GetTimersAmount()
@@ -1033,8 +1067,17 @@ PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer)
   }
 
   const PVRIptvEpgEntry & epg_entry = epg_i->second;
-  if (m_manager.addTimer(epg_entry.strEventId))
+  std::string record_id;
+  if (m_manager.addTimer(epg_entry.strEventId, record_id))
   {
+    // update the record_id into EPG
+    // Note: the m_epg/epg is read-only, so the keys must exist
+    auto epg_copy = std::make_shared<epg_container_t>(*epg);
+    (*epg_copy)[channel_i->strId].epg[timer.startTime].strRecordId = record_id;
+    {
+      std::lock_guard<std::mutex> critical(m_mutex);
+      m_epg = epg_copy;
+    }
     SetLoadRecordings();
     return PVR_ERROR_NO_ERROR;
   }

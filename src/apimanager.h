@@ -63,7 +63,7 @@ public:
   bool getTimeShiftInfo(const std::string &eventId
       , std::string & streamUrl
       , int & duration) const;
-  bool addTimer(const std::string &eventId);
+  bool addTimer(const std::string & eventId, std::string & recordId);
   bool deleteRecord(const std::string &recId);
   bool keepAlive();
   bool loggedIn() const;

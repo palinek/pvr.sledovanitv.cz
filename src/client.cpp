@@ -290,7 +290,11 @@ PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable)
 
 PVR_ERROR IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable)
 {
-  return IsEPGTagPlayable(tag, bIsRecordable);
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->IsEPGTagRecordable(tag, bIsRecordable);
+
+  return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
@@ -424,7 +428,7 @@ PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED
     return PVR_ERROR_INVALID_PARAMETERS;
 
    std::string stream_url;
-   PVR_ERROR ret = data->GetRecordingStreamUrl(recording, stream_url);
+   PVR_ERROR ret = data->GetRecordingStreamUrl(recording->strRecordingId, stream_url);
    if (PVR_ERROR_NO_ERROR != ret)
      return ret;
 

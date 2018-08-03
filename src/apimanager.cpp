@@ -343,12 +343,19 @@ bool ApiManager::getTimeShiftInfo(const std::string &eventId
   return false;
 }
 
-bool ApiManager::addTimer(const std::string &eventId)
+bool ApiManager::addTimer(const std::string &eventId, std::string & recordId)
 {
   ApiParamMap param;
   param["eventId"] = eventId;
 
-  return isSuccess(apiCall("record-event", param));
+  Json::Value root;
+
+  if (isSuccess(apiCall("record-event", param), root))
+  {
+    recordId = root.get("recordId", "").asString();
+    return true;
+  }
+  return false;
 }
 
 bool ApiManager::deleteRecord(const std::string &recId)
