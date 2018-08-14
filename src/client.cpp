@@ -135,6 +135,37 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
   {
     cfg.useH265 = false;
   }
+
+  // Note: currently inputstream.adaptive doesn't support h265
+  // and there is no fallback to ffmpeg for pvr streams yet.
+  if (cfg.useH265)
+  {
+    cfg.useAdaptive = false;
+  } else
+  {
+    if (!XBMC->GetSetting("useAdaptive", &cfg.useAdaptive))
+    {
+      cfg.useAdaptive = false;
+    }
+  }
+}
+
+static PVR_ERROR FillStreamProperties(const properties_t & props, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
+{
+  if (*iPropertiesCount < props.size())
+    return PVR_ERROR_INVALID_PARAMETERS;
+
+  unsigned i = 0;
+  for (const auto & prop : props)
+  {
+    XBMC->Log(LOG_DEBUG, "%s properties[%s]=%s", __FUNCTION__, prop.first.c_str(), prop.second.c_str());
+    strncpy(properties[i].strName, prop.first.c_str(), sizeof(properties[i].strName) - 1);
+    strncpy(properties[i].strValue, prop.second.c_str(), sizeof(properties[i].strValue) - 1);
+    ++i;
+  }
+  *iPropertiesCount = i;
+
+  return PVR_ERROR_NO_ERROR;
 }
 
 extern "C" {
@@ -303,18 +334,12 @@ PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* propert
   if (!tag || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
-   if (*iPropertiesCount < 1)
-     return PVR_ERROR_INVALID_PARAMETERS;
+  std::string stream_url;
+  PVR_ERROR ret = data->GetEPGStreamUrl(tag, stream_url);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
 
-   std::string stream_url;
-   PVR_ERROR ret = data->GetEPGStreamUrl(tag, stream_url);
-   if (PVR_ERROR_NO_ERROR != ret)
-     return ret;
-
-   strncpy(properties[0].strName, PVR_STREAM_PROPERTY_STREAMURL, sizeof(properties[0].strName) - 1);
-   strncpy(properties[0].strValue, stream_url.c_str(), sizeof(properties[0].strValue) - 1);
-   *iPropertiesCount = 1;
-   return PVR_ERROR_NO_ERROR;
+  return FillStreamProperties(data->GetStreamProperties(stream_url, false), properties, iPropertiesCount);
 }
 
 int GetChannelsAmount(void)
@@ -341,20 +366,12 @@ PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE
   if (!channel || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
-  if (*iPropertiesCount < 2)
-    return PVR_ERROR_INVALID_PARAMETERS;
+  std::string stream_url;
+  PVR_ERROR ret = data->GetChannelStreamUrl(channel, stream_url);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
 
-   std::string stream_url;
-   PVR_ERROR ret = data->GetChannelStreamUrl(channel, stream_url);
-   if (PVR_ERROR_NO_ERROR != ret)
-     return ret;
-
-   strncpy(properties[0].strName, PVR_STREAM_PROPERTY_STREAMURL, sizeof(properties[0].strName) - 1);
-   strncpy(properties[0].strValue, stream_url.c_str(), sizeof(properties[0].strValue) - 1);
-   strncpy(properties[1].strName, PVR_STREAM_PROPERTY_ISREALTIMESTREAM, sizeof(properties[1].strName) - 1);
-   strncpy(properties[1].strValue, "true", sizeof(properties[1].strValue) - 1);
-   *iPropertiesCount = 2;
-  return PVR_ERROR_NO_ERROR;
+  return FillStreamProperties(data->GetStreamProperties(stream_url, true), properties, iPropertiesCount);
 }
 
 int GetChannelGroupsAmount(void)
@@ -424,19 +441,12 @@ PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED
   if (!recording || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
-  if (*iPropertiesCount < 1)
-    return PVR_ERROR_INVALID_PARAMETERS;
+  std::string stream_url;
+  PVR_ERROR ret = data->GetRecordingStreamUrl(recording->strRecordingId, stream_url);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
 
-   std::string stream_url;
-   PVR_ERROR ret = data->GetRecordingStreamUrl(recording->strRecordingId, stream_url);
-   if (PVR_ERROR_NO_ERROR != ret)
-     return ret;
-
-   strncpy(properties[0].strName, PVR_STREAM_PROPERTY_STREAMURL, sizeof(properties[0].strName) - 1);
-   strncpy(properties[0].strValue, stream_url.c_str(), sizeof(properties[0].strValue) - 1);
-   *iPropertiesCount = 1;
-  return PVR_ERROR_NO_ERROR;
-
+  return FillStreamProperties(data->GetStreamProperties(stream_url, false), properties, iPropertiesCount);
 }
 
 /** TIMER FUNCTIONS */

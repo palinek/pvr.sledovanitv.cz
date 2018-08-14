@@ -195,6 +195,7 @@ bool ApiManager::pairDevice()
     params["product"] = hostName;
     params["serial"] = macAddr;
     params["unit"] = "default";
+    //params["checkLimit"] = "1";
 
     pairJson = apiCall("create-pairing", params, false);
   }
@@ -277,12 +278,19 @@ bool ApiManager::login()
   return success;
 }
 
-bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, Json::Value & root)
+bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root)
 {
   ApiParamMap params;
   params["format"] = "m3u8";
   params["quality"] = std::to_string(quality);
-  params["capabilities"] = useH265 ? "h265" : "";
+  std::string caps = useAdaptive ? "adaptive" : "";
+  if (useH265)
+  {
+    if (!caps.empty())
+      caps += ',';
+    caps += "h265";
+  }
+  params["capabilities"] = std::move(caps);
   return isSuccess(apiCall("playlist", params), root);
 }
 

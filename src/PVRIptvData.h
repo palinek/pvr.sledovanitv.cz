@@ -32,6 +32,7 @@
 #include <mutex>
 #include <memory>
 #include <condition_variable>
+#include <map>
 
 struct PVRIptvEpgEntry
 {
@@ -121,6 +122,7 @@ typedef std::vector<PVRIptvChannel> channel_container_t;
 typedef std::map<std::string, PVRIptvEpgChannel> epg_container_t;
 typedef std::vector<PVRIptvRecording> recording_container_t;
 typedef std::vector<PVRIptvTimer> timer_container_t;
+typedef std::map<std::string, std::string> properties_t;
 
 struct PVRIptvConfiguration
 {
@@ -133,6 +135,7 @@ struct PVRIptvConfiguration
   unsigned keepAliveDelay; //!< delay (seconds) between keepalive calls
   unsigned epgCheckDelay; //!< delay (seconds) between checking if EPG load is needed
   bool useH265; //!< flag, if h265 codec should be requested
+  bool useAdaptive; //!< flag, if inpustream.adaptive (aka adaptive bitrate streaming) should be used/requested
 };
 
 class PVRIptvData : public P8PLATFORM::CThread
@@ -163,6 +166,7 @@ public:
   PVR_ERROR DeleteRecord(int iRecordId);
   PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed);
   bool LoggedIn() const;
+  properties_t GetStreamProperties(const std::string & url, bool isLive) const;
 
 protected:
   static int ParseDateTime(std::string strDate);
@@ -215,6 +219,7 @@ private:
   unsigned m_keepAliveDelay;
   unsigned m_epgCheckDelay;
   bool m_useH265;
+  bool m_useAdaptive;
 
   ApiManager                        m_manager;
 };

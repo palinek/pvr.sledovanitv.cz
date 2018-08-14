@@ -69,6 +69,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_keepAliveDelay{cfg.keepAliveDelay}
   , m_epgCheckDelay{cfg.epgCheckDelay}
   , m_useH265{cfg.useH265}
+  , m_useAdaptive{cfg.useAdaptive}
   , m_manager{std::move(cfg.userName), std::move(cfg.password)}
 {
 
@@ -583,7 +584,7 @@ bool PVRIptvData::LoadPlayList(void)
 
   Json::Value root;
 
-  if (!m_manager.getPlaylist(m_streamQuality, m_useH265, root))
+  if (!m_manager.getPlaylist(m_streamQuality, m_useH265, m_useAdaptive, root))
   {
     XBMC->Log(LOG_NOTICE, "Cannot get/parse playlist.");
     return false;
@@ -1115,4 +1116,18 @@ PVR_ERROR PVRIptvData::GetDriveSpace(long long *iTotal, long long *iUsed)
 bool PVRIptvData::LoggedIn() const
 {
   return m_manager.loggedIn();
+}
+
+properties_t PVRIptvData::GetStreamProperties(const std::string & url, bool isLive) const
+{
+  properties_t props;
+  props[PVR_STREAM_PROPERTY_STREAMURL] = url;
+  if (m_useAdaptive)
+  {
+    props[PVR_STREAM_PROPERTY_INPUTSTREAMADDON] = "inputstream.adaptive";
+    props["inputstream.adaptive.manifest_type"] = "hls";
+  }
+  if (isLive)
+    props[PVR_STREAM_PROPERTY_ISREALTIMESTREAM] = "true";
+  return props;
 }

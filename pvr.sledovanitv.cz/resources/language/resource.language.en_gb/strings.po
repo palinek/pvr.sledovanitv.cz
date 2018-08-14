@@ -46,6 +46,10 @@ msgctxt "#30005"
 msgid "Use HEVC (h.265) codec"
 msgstr "Use HEVC (h.265) codec"
 
+msgctxt "#30006"
+msgid "Use inputstream.adaptive addon"
+msgstr "Use inputstream.adaptive addon"
+
 msgctxt "#30100"
 msgid "Refresh times"
 msgstr "Refresh times"

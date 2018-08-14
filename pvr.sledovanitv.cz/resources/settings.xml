@@ -38,6 +38,16 @@
           <default>false</default>
           <control type="toggle" />
         </setting>
+        <setting id="useAdaptive" type="boolean" label="30006">
+          <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
+          <dependencies>
+            <!-- Note: currently inputstream.adaptive doesn't support h265
+            and there is no fallback to ffmpeg for pvr streams yet.-->
+            <dependency type="enable" setting="useH265">false</dependency>
+          </dependencies>
+        </setting>
       </group>
     </category>
 

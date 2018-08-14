@@ -55,7 +55,7 @@ public:
 
   bool pairDevice();
   bool login();
-  bool getPlaylist(StreamQuality_t quality, bool useH265, Json::Value & root);
+  bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root);
   bool getStreamQualities(Json::Value & root);
   bool getEpg(time_t start, bool smallDuration, Json::Value & root);
   bool getPvr(Json::Value & root);
