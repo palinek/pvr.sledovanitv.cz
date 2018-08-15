@@ -136,17 +136,9 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
     cfg.useH265 = false;
   }
 
-  // Note: currently inputstream.adaptive doesn't support h265
-  // and there is no fallback to ffmpeg for pvr streams yet.
-  if (cfg.useH265)
+  if (!XBMC->GetSetting("useAdaptive", &cfg.useAdaptive))
   {
     cfg.useAdaptive = false;
-  } else
-  {
-    if (!XBMC->GetSetting("useAdaptive", &cfg.useAdaptive))
-    {
-      cfg.useAdaptive = false;
-    }
   }
 }
 
