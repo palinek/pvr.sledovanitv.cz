@@ -1,0 +1,71 @@
+# Kodi Media Center language file
+# Addon Name: PVR Client for sledovanitv.cz (unofficial)
+# Addon id: pvr.sledovanitv.cz
+# Addon Provider: palinek
+
+msgid ""
+msgstr ""
+
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: cs_CZ\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#settings labels
+
+msgctxt "#30011"
+msgid "PVR sledovanitv.cz (unofficial)"
+msgstr "PVR sledovanitv.cz (neoficiální)"
+
+msgctxt "#30010"
+msgid "Basic"
+msgstr "Základní"
+
+msgctxt "#30000"
+msgid "Login"
+msgstr "Login"
+
+msgctxt "#30001"
+msgid "Password"
+msgstr "Heslo"
+
+msgctxt "#30002"
+msgid "Stream quality"
+msgstr "Kvalita streamu"
+
+msgctxt "#30003"
+msgid "SD"
+msgstr "SD"
+
+msgctxt "#30004"
+msgid "HD"
+msgstr "HD"
+
+msgctxt "#30005"
+msgid "Use HEVC (h.265) codec"
+msgstr "Využít HEVC (h.265) kodek"
+
+msgctxt "#30006"
+msgid "Use inputstream.adaptive addon"
+msgstr "Využít doplněk inputstream.adaptive"
+
+msgctxt "#30100"
+msgid "Refresh times"
+msgstr "Časy aktualizace"
+
+msgctxt "#30101"
+msgid "Interval of full channels/EPG refresh"
+msgstr "Interval úplného obnovení kanálů/EPG"
+
+msgctxt "#30102"
+msgid "Interval of recordings refresh"
+msgstr "Interval obnovování nahrávek"
+
+msgctxt "#30103"
+msgid "Interval of keep-alive calls"
+msgstr "Interval 'keep-alive' volaní"
+
+msgctxt "#30104"
+msgid "Interval of EPG checks"
+msgstr "Interval oveřování EPG"

@@ -1,5 +1,7 @@
 #pragma once
 /*
+ *      Copyright (c) 2018~now Palo Kisa <palo.kisa@gmail.com>
+ *
  *      Copyright (C) 2013 Anton Fedchin
  *      http://github.com/afedchin/xbmc-addon-iptvsimple/
  *
@@ -17,7 +19,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
+ *  along with this addon; see the file COPYING.  If not, write to
  *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
  *  http://www.gnu.org/copyleft/gpl.html
  *
@@ -25,34 +27,9 @@
 
 #include "kodi/libXBMC_addon.h"
 #include "kodi/libXBMC_pvr.h"
-//#include "libXBMC_gui.h"
 
-#define PVR_CLIENT_VERSION     "2.0.2"
-#define M3U_FILE_NAME          "iptv.m3u.cache"
-#define TVG_FILE_NAME          "xmltv.xml.cache"
-
-/*!
- * @brief PVR macros for string exchange
- */
-#define PVR_STRCPY(dest, source) do { strncpy(dest, source, sizeof(dest)-1); dest[sizeof(dest)-1] = '\0'; } while(0)
-#define PVR_STRCLR(dest) memset(dest, 0, sizeof(dest))
-
-extern bool                          m_bCreated;
-extern std::string                   g_strUserPath;
-extern std::string                   g_strClientPath;
 extern ADDON::CHelper_libXBMC_addon *XBMC;
 extern CHelper_libXBMC_pvr          *PVR;
-
-//extern std::string g_strM3UPath;
-//extern std::string g_strTvgPath;
-//extern std::string g_strLogoPath;
-extern std::string g_strUserName;
-extern std::string g_strPassword;
-//extern int         g_iEPGTimeShift;
-//extern int         g_iStartNumber;
-//extern bool        g_bTSOverride;
-//extern bool        g_bCacheM3U;
-//extern bool        g_bCacheEPG;
 
 extern std::string PathCombine(const std::string &strPath, const std::string &strFileName);
 extern std::string GetClientFilePath(const std::string &strFileName);

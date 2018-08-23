@@ -1,4 +1,6 @@
 /*
+ *      Copyright (c) 2018~now Palo Kisa <palo.kisa@gmail.com>
+ *
  *      Copyright (C) 2013 Anton Fedchin
  *      http://github.com/afedchin/xbmc-addon-iptvsimple/
  *
@@ -16,7 +18,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
+ *  along with this addon; see the file COPYING.  If not, write to
  *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
  *  http://www.gnu.org/copyleft/gpl.html
  *
@@ -27,55 +29,47 @@
 #include "p8-platform/util/util.h"
 #include "PVRIptvData.h"
 #include "kodi/xbmc_pvr_dll.h"
-#include "kodi/libKODI_guilib.h"
 
 #include <iostream>
+#include <memory>
+#include <atomic>
 
-using namespace std;
 using namespace ADDON;
 
 #ifdef TARGET_WINDOWS
 #define snprintf _snprintf
+#ifdef CreateDirectory
+#undef CreateDirectory
+#endif
+#ifdef DeleteFile
+#undef DeleteFile
+#endif
 #endif
 
-bool           m_bCreated       = false;
+
 ADDON_STATUS   m_CurStatus      = ADDON_STATUS_UNKNOWN;
-PVRIptvData   *m_data           = NULL;
-bool           m_bIsPlaying     = false;
-PVRIptvChannel m_currentChannel;
-PVRIptvRecording m_currentRecording;
+static std::shared_ptr<PVRIptvData> m_data;
 
 /* User adjustable settings are saved here.
  * Default values are defined inside client.h
  * and exported to the other source files.
  */
-std::string g_strUserPath   = "";
-std::string g_strClientPath = "";
+static std::string g_strUserPath   = "";
+static std::string g_strClientPath = "";
+static int g_iEpgMaxDays = 0;
 
 CHelper_libXBMC_addon *XBMC = NULL;
 CHelper_libXBMC_pvr   *PVR  = NULL;
 
-//std::string g_strTvgPath    = "";
-//std::string g_strM3UPath    = "";
-//std::string g_strLogoPath   = "";
-std::string g_strUserName	= "";
-std::string g_strPassword	= "";
-bool g_bHdEnabled = true;
-//int         g_iEPGTimeShift = 0;
-//int         g_iStartNumber  = 1;
-//bool        g_bTSOverride   = true;
-//bool        g_bCacheM3U     = false;
-//bool        g_bCacheEPG     = false;
-
-extern std::string PathCombine(const std::string &strPath, const std::string &strFileName)
+std::string PathCombine(const std::string &strPath, const std::string &strFileName)
 {
   std::string strResult = strPath;
   if (strResult.at(strResult.size() - 1) == '\\' ||
-      strResult.at(strResult.size() - 1) == '/') 
+      strResult.at(strResult.size() - 1) == '/')
   {
     strResult.append(strFileName);
   }
-  else 
+  else
   {
     strResult.append("/");
     strResult.append(strFileName);
@@ -84,38 +78,89 @@ extern std::string PathCombine(const std::string &strPath, const std::string &st
   return strResult;
 }
 
-extern std::string GetClientFilePath(const std::string &strFileName)
+std::string GetClientFilePath(const std::string &strFileName)
 {
   return PathCombine(g_strClientPath, strFileName);
 }
 
-extern std::string GetUserFilePath(const std::string &strFileName)
+std::string GetUserFilePath(const std::string &strFileName)
 {
   return PathCombine(g_strUserPath, strFileName);
 }
 
-extern "C" {
-
-void ADDON_ReadSettings(void)
+static void ReadSettings(PVRIptvConfiguration & cfg)
 {
   char buffer[1024];
-  //int iPathType = 0;
 
   if (XBMC->GetSetting("userName", &buffer))
   {
-    g_strUserName = buffer;
+    cfg.userName = buffer;
   }
 
-  if (XBMC->GetSetting("password", buffer))
+  if (XBMC->GetSetting("password", &buffer))
   {
-    g_strPassword = buffer;
+    cfg.password = buffer;
   }
 
-  if (!XBMC->GetSetting("enableHd", &g_bHdEnabled))
+  if (!XBMC->GetSetting("streamQuality", &cfg.streamQuality))
   {
-    g_bHdEnabled = true;
+    cfg.streamQuality = 0;
+  }
+
+  if (!XBMC->GetSetting("fullChannelEpgRefresh", &cfg.fullChannelEpgRefresh))
+  {
+    cfg.fullChannelEpgRefresh = 24;
+  }
+  // make it seconds
+  cfg.fullChannelEpgRefresh *= 3600;
+
+  if (!XBMC->GetSetting("loadingsRefresh", &cfg.loadingsRefresh))
+  {
+    cfg.loadingsRefresh = 60;
+  }
+
+  if (!XBMC->GetSetting("keepAliveDelay", &cfg.keepAliveDelay))
+  {
+    cfg.loadingsRefresh = 20;
+  }
+
+  if (!XBMC->GetSetting("epgCheckDelay", &cfg.epgCheckDelay))
+  {
+    cfg.epgCheckDelay = 1;
+  }
+  // make it seconds
+  cfg.epgCheckDelay *= 60;
+
+  if (!XBMC->GetSetting("useH265", &cfg.useH265))
+  {
+    cfg.useH265 = false;
+  }
+
+  if (!XBMC->GetSetting("useAdaptive", &cfg.useAdaptive))
+  {
+    cfg.useAdaptive = false;
   }
 }
+
+static PVR_ERROR FillStreamProperties(const properties_t & props, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
+{
+  if (*iPropertiesCount < props.size())
+    return PVR_ERROR_INVALID_PARAMETERS;
+
+  unsigned i = 0;
+  for (const auto & prop : props)
+  {
+    XBMC->Log(LOG_DEBUG, "%s properties[%s]=%s", __FUNCTION__, prop.first.c_str(), prop.second.c_str());
+    strncpy(properties[i].strName, prop.first.c_str(), sizeof(properties[i].strName) - 1);
+    strncpy(properties[i].strValue, prop.second.c_str(), sizeof(properties[i].strValue) - 1);
+    ++i;
+  }
+  *iPropertiesCount = i;
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+extern "C" {
 
 ADDON_STATUS ADDON_Create(void* hdl, void* props)
 {
@@ -141,7 +186,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
     return ADDON_STATUS_PERMANENT_FAILURE;
   }
 
-  XBMC->Log(LOG_DEBUG, "%s - Creating the PVR IPTV Simple add-on", __FUNCTION__);
+  XBMC->Log(LOG_DEBUG, "%s - Creating the %s", __FUNCTION__, GetBackendName());
 
   m_CurStatus     = ADDON_STATUS_UNKNOWN;
   g_strUserPath   = pvrprops->strUserPath;
@@ -149,18 +194,16 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 
   if (!XBMC->DirectoryExists(g_strUserPath.c_str()))
   {
-#ifdef TARGET_WINDOWS
-    CreateDirectory(g_strUserPath.c_str(), NULL);
-#else
     XBMC->CreateDirectory(g_strUserPath.c_str());
-#endif
   }
 
-  ADDON_ReadSettings();
+  PVRIptvConfiguration cfg;
+  ReadSettings(cfg);
+  cfg.epgMaxDays = pvrprops->iEpgMaxDays;
 
-  m_data = new PVRIptvData;
+  std::atomic_store(&m_data, std::shared_ptr<PVRIptvData>{nullptr}); // be sure that the previous one is deleted before new is constructed
+  std::atomic_store(&m_data, std::make_shared<PVRIptvData>(std::move(cfg)));
   m_CurStatus = ADDON_STATUS_OK;
-  m_bCreated = true;
 
   return m_CurStatus;
 }
@@ -172,59 +215,14 @@ ADDON_STATUS ADDON_GetStatus()
 
 void ADDON_Destroy()
 {
-  delete m_data;
-  m_bCreated = false;
+  std::atomic_store(&m_data, std::shared_ptr<PVRIptvData>{nullptr});
   m_CurStatus = ADDON_STATUS_UNKNOWN;
-}
-
-bool ADDON_HasSettings()
-{
-  return true;
-}
-
-unsigned int ADDON_GetSettings(ADDON_StructSetting ***sSet)
-{
-  return 0;
 }
 
 ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
 {
-  // reset cache and restart addon 
-
-  string strFile = GetUserFilePath(M3U_FILE_NAME);
-  if (XBMC->FileExists(strFile.c_str(), false))
-  {
-#ifdef TARGET_WINDOWS
-    DeleteFile(strFile.c_str());
-#else
-    XBMC->DeleteFile(strFile.c_str());
-#endif
-  }
-
-  strFile = GetUserFilePath(TVG_FILE_NAME);
-  if (XBMC->FileExists(strFile.c_str(), false))
-  {
-#ifdef TARGET_WINDOWS
-    DeleteFile(strFile.c_str());
-#else
-    XBMC->DeleteFile(strFile.c_str());
-#endif
-  }
-
+  // just force our data to be re-created
   return ADDON_STATUS_NEED_RESTART;
-}
-
-void ADDON_Stop()
-{
-  if (m_data != NULL)
-  {
-    delete m_data;
-    m_data = NULL;
-  }
-}
-
-void ADDON_FreeSettings()
-{
 }
 
 void ADDON_Announce(const char *flag, const char *sender, const char *message, const void *data)
@@ -234,317 +232,380 @@ void ADDON_Announce(const char *flag, const char *sender, const char *message, c
 /***********************************************************
  * PVR Client AddOn specific public library functions
  ***********************************************************/
-
-const char* GetPVRAPIVersion(void)
-{
-  static const char *strApiVersion = XBMC_PVR_API_VERSION;
-  return strApiVersion;
-}
-
-const char* GetMininumPVRAPIVersion(void)
-{
-  static const char *strMinApiVersion = XBMC_PVR_MIN_API_VERSION;
-  return strMinApiVersion;
-}
-
-const char* GetGUIAPIVersion(void)
-{
-  static const char *strGuiApiVersion = KODI_GUILIB_API_VERSION;
-  return strGuiApiVersion;
-}
-
-const char* GetMininumGUIAPIVersion(void)
-{
-  static const char *strMinGuiApiVersion = KODI_GUILIB_MIN_API_VERSION;
-  return strMinGuiApiVersion;
-}
-
 PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
 {
+  XBMC->Log(LOG_DEBUG, "%s", __FUNCTION__);
   pCapabilities->bSupportsEPG             = true;
   pCapabilities->bSupportsTV              = true;
   pCapabilities->bSupportsRadio           = true;
-  pCapabilities->bSupportsChannelGroups   = true;
   pCapabilities->bSupportsRecordings      = true;
+  pCapabilities->bSupportsRecordingsUndelete = false;
   pCapabilities->bSupportsTimers          = true;
-//  pCapabilities->bHandlesInputStream      = true;
+  pCapabilities->bSupportsChannelGroups   = true;
+  pCapabilities->bSupportsChannelScan     = false;
+  pCapabilities->bSupportsChannelSettings = false;
+  pCapabilities->bHandlesInputStream      = false;
+  pCapabilities->bHandlesDemuxing         = false;
+  pCapabilities->bSupportsRecordingPlayCount = false;
+  pCapabilities->bSupportsLastPlayedPosition = false;
+  pCapabilities->bSupportsRecordingEdl     = false;
+  pCapabilities->bSupportsRecordingsRename = false;
+  pCapabilities->bSupportsRecordingsLifetimeChange = false;
+  pCapabilities->bSupportsDescrambleInfo   = false;
+  pCapabilities->iRecordingsLifetimesSize  = 0;
 
   return PVR_ERROR_NO_ERROR;
 }
 
 const char *GetBackendName(void)
 {
-  static const char *strBackendName = "Sledovanitv.cz PVR Add-on";
+  static const char *strBackendName = "PVR sledovanitv.cz (unofficial)";
   return strBackendName;
 }
 
 const char *GetBackendVersion(void)
 {
-  static CStdString strBackendVersion = PVR_CLIENT_VERSION;
+  static std::string strBackendVersion = "";
   return strBackendVersion.c_str();
 }
 
 const char *GetConnectionString(void)
 {
-  static CStdString strConnectionString = "connected";
+  static std::string strConnectionString = "connected";
   return strConnectionString.c_str();
 }
 
 PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 {
-  *iTotal = 0;
-  *iUsed  = 0;
-  return PVR_ERROR_NO_ERROR;
-}
-
-PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
-{
-  if (m_data)
-    return m_data->GetEPGForChannel(handle, channel, iStart, iEnd);
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetDriveSpace(iTotal, iUsed);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
+PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
+{
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetEPGForChannel(handle, channel, iStart, iEnd);
+
+  return PVR_ERROR_SERVER_ERROR;
+}
+
+PVR_ERROR SetEPGTimeFrame(int iDays)
+{
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->SetEPGTimeFrame(iDays);
+
+  return PVR_ERROR_SERVER_ERROR;
+}
+
+PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable)
+{
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->IsEPGTagPlayable(tag, bIsPlayable);
+
+  return PVR_ERROR_SERVER_ERROR;
+}
+
+PVR_ERROR IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable)
+{
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->IsEPGTagRecordable(tag, bIsRecordable);
+
+  return PVR_ERROR_SERVER_ERROR;
+}
+
+PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
+{
+  auto data = std::atomic_load(&m_data);
+  if (!tag || !properties || !iPropertiesCount || !data)
+    return PVR_ERROR_SERVER_ERROR;
+
+  std::string stream_url;
+  PVR_ERROR ret = data->GetEPGStreamUrl(tag, stream_url);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
+
+  return FillStreamProperties(data->GetStreamProperties(stream_url, false), properties, iPropertiesCount);
+}
+
 int GetChannelsAmount(void)
 {
-  if (m_data)
-    return m_data->GetChannelsAmount();
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetChannelsAmount();
 
   return -1;
 }
 
 PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
-  if (m_data)
-    return m_data->GetChannels(handle, bRadio);
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetChannels(handle, bRadio);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
-bool OpenLiveStream(const PVR_CHANNEL &channel)
+PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
-  XBMC->Log(LOG_DEBUG, "%s - OpenLiveStream", __FUNCTION__);
-  if (m_data)
-  {
-    CloseLiveStream();
+  auto data = std::atomic_load(&m_data);
+  if (!channel || !properties || !iPropertiesCount || !data)
+    return PVR_ERROR_SERVER_ERROR;
 
-    if (m_data->GetChannel(channel, m_currentChannel))
-    {
-      m_bIsPlaying = true;
-      m_data->SetPlaying(true);
-      return true;
-    }
-  }
+  std::string stream_url;
+  PVR_ERROR ret = data->GetChannelStreamUrl(channel, stream_url);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
 
-  return false;
-}
-
-void CloseLiveStream(void)
-{
-  if (m_data)
-    m_data->SetPlaying(false);
-
-  m_bIsPlaying = false;
-}
-
-int GetCurrentClientChannel(void)
-{
-  return m_currentChannel.iUniqueId;
-}
-
-bool SwitchChannel(const PVR_CHANNEL &channel)
-{
-  CloseLiveStream();
-
-  return OpenLiveStream(channel);
-}
-
-PVR_ERROR GetStreamProperties(PVR_STREAM_PROPERTIES* pProperties)
-{
-  return PVR_ERROR_NOT_IMPLEMENTED;
+  return FillStreamProperties(data->GetStreamProperties(stream_url, true), properties, iPropertiesCount);
 }
 
 int GetChannelGroupsAmount(void)
 {
-  if (m_data)
-    return m_data->GetChannelGroupsAmount();
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetChannelGroupsAmount();
 
   return -1;
 }
 
 PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
-  if (m_data)
-    return m_data->GetChannelGroups(handle, bRadio);
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetChannelGroups(handle, bRadio);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
-  if (m_data)
-    return m_data->GetChannelGroupMembers(handle, group);
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetChannelGroupMembers(handle, group);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR SignalStatus(PVR_SIGNAL_STATUS &signalStatus)
 {
-  snprintf(signalStatus.strAdapterName, sizeof(signalStatus.strAdapterName), "Sledovanitv.cz");
+  snprintf(signalStatus.strAdapterName, sizeof(signalStatus.strAdapterName), "sledovanitv.cz");
   snprintf(signalStatus.strAdapterStatus, sizeof(signalStatus.strAdapterStatus), "OK");
 
   return PVR_ERROR_NO_ERROR;
 }
 
-bool CanPauseStream(void) { return true; }
-
 int GetRecordingsAmount(bool deleted)
 {
-  if (m_data)
-    return m_data->GetRecordingsAmount();
+  XBMC->Log(LOG_DEBUG, "%s", __FUNCTION__);
+  if (deleted)
+    return 0;
+
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetRecordingsAmount();
 
   return 0;
 }
 
 PVR_ERROR GetRecordings(ADDON_HANDLE handle, bool deleted)
 {
-  if (m_data)
-    return m_data->GetRecordings(handle);
+  XBMC->Log(LOG_DEBUG, "%s", __FUNCTION__);
+  if (deleted)
+    return PVR_ERROR_NO_ERROR;
+
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetRecordings(handle);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
-bool OpenRecordedStream(const PVR_RECORDING &recording)
+PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
-  if (m_data)
-    m_data->SetPlaying(true);
+  auto data = std::atomic_load(&m_data);
+  if (!recording || !properties || !iPropertiesCount || !data)
+    return PVR_ERROR_SERVER_ERROR;
 
-  m_bIsPlaying = true;
-  return true;
-}
+  std::string stream_url;
+  PVR_ERROR ret = data->GetRecordingStreamUrl(recording->strRecordingId, stream_url);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
 
-void CloseRecordedStream(void)
-{
-  if (m_data)
-    m_data->SetPlaying(false);
-
-  m_bIsPlaying = false;
-}
-
-/** SEEK */
-bool CanSeekStream(void)
-{
-  return false;
-}
-
-long long SeekRecordedStream(long long iPosition, int iWhence /* = SEEK_SET */)
-{
-  return 0;
-}
-
-long long PositionRecordedStream(void)
-{
-  return -1;
-}
-
-long long LengthRecordedStream(void)
-{
-  return 0;
+  return FillStreamProperties(data->GetStreamProperties(stream_url, false), properties, iPropertiesCount);
 }
 
 /** TIMER FUNCTIONS */
 int GetTimersAmount(void)
 {
-  if (m_data)
-    return m_data->GetTimersAmount();
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetTimersAmount();
 
   return -1;
 }
 
 PVR_ERROR GetTimers(ADDON_HANDLE handle)
 {
-  if (m_data)
-    return m_data->GetTimers(handle);
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->GetTimers(handle);
 
   return PVR_ERROR_SERVER_ERROR;
+}
+
+PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
+{
+  XBMC->Log(LOG_DEBUG, "%s - size: %d", __FUNCTION__, *size);
+  int pos = 0;
+  types[pos].iId = pos + 1;
+  types[pos].iAttributes = PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME;
+  types[pos].strDescription[0] = '\0'; // let Kodi generate the description
+  types[pos].iPrioritiesSize = 0; // no priorities needed
+  //types[pos].priorities
+  //types[pos].iPrioritiesDefault = 0;
+  types[pos].iLifetimesSize = 0; // no lifetime settings supported yet
+  //types[pos].lifetimes
+  //types[pos].iLifetimesDefault = 0;
+  types[pos].iPreventDuplicateEpisodesSize = 0;
+  //types[pos].preventDuplicateEpisodes
+  //types[pos].iPreventDuplicateEpisodesDefault = 0;
+  types[pos].iRecordingGroupSize = 0;
+  //types[pos].maxRecordings
+  //types[pos].iRecordingGroupDefault = 0;
+  types[pos].iMaxRecordingsSize = 0;
+  //types[pos].maxRecordings
+  //types[pos].iMaxRecordingsDefault = 0;
+  XBMC->Log(LOG_DEBUG, "%s - attributes: 0x%x", __FUNCTION__, types[pos].iAttributes);
+
+  ++pos;
+  types[pos].iId = pos + 1;
+  types[pos].iAttributes = PVR_TIMER_TYPE_IS_REPEATING | PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME;
+  types[pos].strDescription[0] = '\0'; // let Kodi generate the description
+  types[pos].iPrioritiesSize = 0; // no priorities needed
+  //types[pos].priorities
+  //types[pos].iPrioritiesDefault = 0;
+  types[pos].iLifetimesSize = 0; // no lifetime settings supported yet
+  //types[pos].lifetimes
+  //types[pos].iLifetimesDefault = 0;
+  types[pos].iPreventDuplicateEpisodesSize = 0;
+  //types[pos].preventDuplicateEpisodes
+  //types[pos].iPreventDuplicateEpisodesDefault = 0;
+  types[pos].iRecordingGroupSize = 0;
+  //types[pos].maxRecordings
+  //types[pos].iRecordingGroupDefault = 0;
+  types[pos].iMaxRecordingsSize = 0;
+  //types[pos].maxRecordings
+  //types[pos].iMaxRecordingsDefault = 0;
+  XBMC->Log(LOG_DEBUG, "%s - attributes: 0x%x", __FUNCTION__, types[pos].iAttributes);
+
+  *size = pos + 1;
+  return PVR_ERROR_NO_ERROR;
 }
 
 PVR_ERROR AddTimer(const PVR_TIMER &timer)
 {
-  if (m_data)
-    return m_data->AddTimer(timer);
+  XBMC->Log(LOG_DEBUG, "%s - type %d", __FUNCTION__, timer.iTimerType);
+  auto data = std::atomic_load(&m_data);
+  if (!data)
+    return PVR_ERROR_SERVER_ERROR;
 
-  return PVR_ERROR_SERVER_ERROR;
+  return data->AddTimer(timer);
 }
 
 PVR_ERROR DeleteTimer(const PVR_TIMER &timer, bool bForceDelete)
 {
-  if (m_data)
-    return m_data->DeleteRecord(timer.iClientIndex);
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->DeleteRecord(timer.iClientIndex);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
 PVR_ERROR DeleteRecording(const PVR_RECORDING &recording)
 {
-  if (m_data)
-    return m_data->DeleteRecord(recording.strRecordingId);
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->DeleteRecord(recording.strRecordingId);
 
   return PVR_ERROR_SERVER_ERROR;
 }
 
+bool CanSeekStream(void)
+{
+  return false;
+}
+
+bool CanPauseStream(void)
+{
+  return false;
+}
+
 bool IsTimeshifting(void)
+{
+  return false;
+}
+
+bool IsRealTimeStream()
 {
   return true;
 }
 
 const char *GetBackendHostname(void)
 {
-	return "";
+  return "";
 }
 
 /** UNUSED API FUNCTIONS */
-const char * GetLiveStreamURL(const PVR_CHANNEL &channel)  { return ""; }
 PVR_ERROR DialogChannelScan(void) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR CallMenuHook(const PVR_MENUHOOK &menuhook, const PVR_MENUHOOK_DATA &item) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR DeleteChannel(const PVR_CHANNEL &channel) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR RenameChannel(const PVR_CHANNEL &channel) { return PVR_ERROR_NOT_IMPLEMENTED; }
-PVR_ERROR MoveChannel(const PVR_CHANNEL &channel) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR DialogChannelSettings(const PVR_CHANNEL &channel) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR DialogAddChannel(const PVR_CHANNEL &channel) { return PVR_ERROR_NOT_IMPLEMENTED; }
-PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR OpenDialogChannelScan(void) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR OpenDialogChannelSettings(const PVR_CHANNEL &channel) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR OpenDialogChannelAdd(const PVR_CHANNEL &channel) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR DeleteAllRecordingsFromTrash() { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR UndeleteRecording(const PVR_RECORDING& recording) { return PVR_ERROR_NOT_IMPLEMENTED; }
+bool OpenRecordedStream(const PVR_RECORDING &recording) { return false; }
+void CloseRecordedStream(void) {}
+long long SeekRecordedStream(long long iPosition, int iWhence /* = SEEK_SET */) { return -1; }
+long long LengthRecordedStream(void) { return -1; }
 int ReadRecordedStream(unsigned char *pBuffer, unsigned int iBufferSize) { return 0; }
 void DemuxReset(void) {}
 void DemuxFlush(void) {}
-int ReadLiveStream(unsigned char *pBuffer, unsigned int iBufferSize) { return 0; }
+bool OpenLiveStream(const PVR_CHANNEL &channel) { return false; }
+void CloseLiveStream(void) {}
+int ReadLiveStream(unsigned char *pBuffer, unsigned int iBufferSize) { return -1; }
 long long SeekLiveStream(long long iPosition, int iWhence /* = SEEK_SET */) { return -1; }
-long long PositionLiveStream(void) { return -1; }
 long long LengthLiveStream(void) { return -1; }
 PVR_ERROR RenameRecording(const PVR_RECORDING &recording) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR SetRecordingPlayCount(const PVR_RECORDING &recording, int count) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR SetRecordingLastPlayedPosition(const PVR_RECORDING &recording, int lastplayedposition) { return PVR_ERROR_NOT_IMPLEMENTED; }
 int GetRecordingLastPlayedPosition(const PVR_RECORDING &recording) { return -1; }
-PVR_ERROR GetRecordingEdl(const PVR_RECORDING&, PVR_EDL_ENTRY[], int*) { return PVR_ERROR_NOT_IMPLEMENTED; };
+PVR_ERROR GetRecordingEdl(const PVR_RECORDING&, PVR_EDL_ENTRY[], int*) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR UpdateTimer(const PVR_TIMER &timer) { return PVR_ERROR_NOT_IMPLEMENTED; }
 void DemuxAbort(void) {}
 DemuxPacket* DemuxRead(void) { return NULL; }
-unsigned int GetChannelSwitchDelay(void) { return 0; }
 void PauseStream(bool bPaused) {}
 bool SeekTime(double,bool,double*) { return false; }
-void SetSpeed(int) {};
-time_t GetPlayingTime() { return 0; }
-time_t GetBufferTimeStart() { return 0; }
-time_t GetBufferTimeEnd() { return 0; }
+void SetSpeed(int) {}
 void OnSystemSleep() { }
 void OnSystemWake() { }
 void OnPowerSavingActivated() { }
 void OnPowerSavingDeactivated() { }
-PVR_ERROR SetEPGTimeFrame(int) { return PVR_ERROR_NOT_IMPLEMENTED; }
-bool IsRealTimeStream() { return true; }
+PVR_ERROR GetDescrambleInfo(PVR_DESCRAMBLE_INFO*) { return PVR_ERROR_NOT_IMPLEMENTED; }
+PVR_ERROR SetRecordingLifetime(const PVR_RECORDING*) { return PVR_ERROR_NOT_IMPLEMENTED; }
+PVR_ERROR GetStreamProperties(PVR_STREAM_PROPERTIES*) { return PVR_ERROR_NOT_IMPLEMENTED; }
+PVR_ERROR GetStreamTimes(PVR_STREAM_TIMES*) { return PVR_ERROR_NOT_IMPLEMENTED; }
+PVR_ERROR GetEPGTagEdl(const EPG_TAG* epgTag, PVR_EDL_ENTRY edl[], int *size) { return PVR_ERROR_NOT_IMPLEMENTED; }
+PVR_ERROR GetStreamReadChunkSize(int* chunksize) { return PVR_ERROR_NOT_IMPLEMENTED; }
 
-}
+} // extern "C"

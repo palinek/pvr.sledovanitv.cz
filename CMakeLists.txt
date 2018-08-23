@@ -1,4 +1,4 @@
-project(pvr.sledovanitv)
+project(pvr.sledovanitv.cz)
 
 cmake_minimum_required(VERSION 2.6)
 
@@ -21,9 +21,18 @@ set(DEPLIBS ${p8-platform_LIBRARIES}
 
 
 set(SLEDOVANITV_SOURCES src/client.cpp
-		 src/apimanager.cpp
-                 src/PVRIptvData.cpp)
+  src/apimanager.cpp
+  src/PVRIptvData.cpp)
 
-build_addon(pvr.sledovanitv SLEDOVANITV DEPLIBS)
+set(SLEDOVANITV_HEADERS src/client.h
+  src/apimanager.h
+  src/CallLimiter.hh
+  src/PVRIptvData.h)
+
+if(WIN32)
+  add_definitions("/wd4996")
+endif()
+
+build_addon(pvr.sledovanitv.cz SLEDOVANITV DEPLIBS)
 
 include(CPack)

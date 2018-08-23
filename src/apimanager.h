@@ -1,4 +1,6 @@
 /*
+ *      Copyright (c) 2018~now Palo Kisa <palo.kisa@gmail.com>
+ *
  *      Copyright (C) 2014 Josef Rokos
  *      http://github.com/PepaRokos/xbmc-pvr-addons/
  *
@@ -16,7 +18,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
+ *  along with this addon; see the file COPYING.  If not, write to
  *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
  *  http://www.gnu.org/copyleft/gpl.html
  *
@@ -27,41 +29,64 @@
 
 #include <string>
 #include <map>
+#include <memory>
 
 typedef std::map<std::string, std::string> ApiParamMap;
+
+namespace Json
+{
+  class Value;
+}
 
 class ApiManager
 {
 public:
-  ApiManager();
+  enum StreamQuality_t
+  {
+    SQ_DEFAULT = 0
+      , SQ_SD = 20
+      , SQ_HD = 40
+  };
+public:
+  static std::string formatTime(time_t t);
+
+public:
+  ApiManager(const std::string & userName, const std::string & userPassword);
 
   bool pairDevice();
   bool login();
-  bool isLoggedIn() { return !m_sessionId.empty(); }
-  std::string getPlaylist();
-  std::string getStreamQualities();
-  std::string getEpg(); //TODO timerange
-  std::string getPvr();
+  bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root);
+  bool getStreamQualities(Json::Value & root);
+  bool getEpg(time_t start, bool smallDuration, Json::Value & root);
+  bool getPvr(Json::Value & root);
   std::string getRecordingUrl(const std::string &recId);
-  bool addTimer(const std::string &eventId);
-  std::string getEventId(const std::string &channel, time_t start, time_t end);
+  bool getTimeShiftInfo(const std::string &eventId
+      , std::string & streamUrl
+      , int & duration) const;
+  bool addTimer(const std::string & eventId, std::string & recordId);
   bool deleteRecord(const std::string &recId);
   bool keepAlive();
+  bool loggedIn() const;
 
 private:
-  std::string urlEncode(const std::string &str);
-  std::string buildQueryString(ApiParamMap paramMap);
-  std::string readPairFile();
-  void createPairFile(const std::string &content);
-  std::string apiCall(const std::string &function, ApiParamMap paramsMap);
-  bool isSuccess(const std::string &response);
+  static std::string urlEncode(const std::string &str);
+  static std::string readPairFile();
+  static void createPairFile(const std::string &content);
+  static bool isSuccess(const std::string &response, Json::Value & root);
+  static bool isSuccess(const std::string &response);
+
+  std::string buildQueryString(const ApiParamMap & paramMap, bool putSessionVar) const;
+  std::string call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar) const;
+  std::string apiCall(const std::string &function, const ApiParamMap & paramsMap, bool putSessionVar = true) const;
 
   static const std::string API_URL;
-  static const std::string LOG_PREFIX;
+  static const std::string TIMESHIFTINFO_URL;
   static const std::string PAIR_FILE;
+  const std::string m_userName;
+  const std::string m_userPassword;
   std::string m_deviceId;
   std::string m_password;
-  std::string m_sessionId;
+  std::shared_ptr<const std::string> m_sessionId;
 };
 
 #endif // APIMANAGER_H
