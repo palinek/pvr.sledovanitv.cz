@@ -50,6 +50,10 @@ msgctxt "#30006"
 msgid "Use inputstream.adaptive addon"
 msgstr "Použiť doplnok inputstream.adaptive"
 
+msgctxt "#30007"
+msgid "Show unavailable channels"
+msgstr "Zobrazovať nedostupné kanály"
+
 msgctxt "#30100"
 msgid "Refresh times"
 msgstr "Časy aktualizácie"

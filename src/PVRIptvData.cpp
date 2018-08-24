@@ -70,6 +70,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_epgCheckDelay{cfg.epgCheckDelay}
   , m_useH265{cfg.useH265}
   , m_useAdaptive{cfg.useAdaptive}
+  , m_showLockedChannels{cfg.showLockedChannels}
   , m_manager{std::move(cfg.userName), std::move(cfg.password)}
 {
 
@@ -327,7 +328,7 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
 
   Json::Value root;
 
-  if (!m_manager.getEpg(iStart, bSmallStep, root))
+  if (!m_manager.getEpg(iStart, bSmallStep, ChannelsList(), root))
   {
     XBMC->Log(LOG_NOTICE, "Cannot parse EPG data. EPG not loaded.");
     m_bEGPLoaded = true;
@@ -601,6 +602,16 @@ bool PVRIptvData::LoadPlayList(void)
   for (unsigned int i = 0; i < channels.size(); i++)
   {
     Json::Value channel = channels[i];
+    if (!m_showLockedChannels)
+    {
+      const std::string locked = channel.get("locked", "none").asString();
+      if (locked != "none")
+      {
+        XBMC->Log(LOG_DEBUG, "Skipping locked(%s) channel %s", locked.c_str(), channel.get("name", "").asString().c_str());
+        continue;
+      }
+    }
+
     PVRIptvChannel iptvchan;
 
     iptvchan.strId = channel.get("id", "").asString();
@@ -1130,4 +1141,24 @@ properties_t PVRIptvData::GetStreamProperties(const std::string & url, bool isLi
   if (isLive)
     props[PVR_STREAM_PROPERTY_ISREALTIMESTREAM] = "true";
   return props;
+}
+
+std::string PVRIptvData::ChannelsList() const
+{
+  decltype (m_channels) channels;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    channels = m_channels;
+  }
+  std::ostringstream os;
+  bool first = true;
+  std::for_each(channels->cbegin(), channels->cend(), [&os, &first] (channel_container_t::const_reference chan)
+      {
+        if (first)
+          first = false;
+        else
+          os << ",";
+        os << chan.strId;
+      });
+  return os.str();
 }

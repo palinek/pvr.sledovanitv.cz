@@ -57,7 +57,7 @@ public:
   bool login();
   bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root);
   bool getStreamQualities(Json::Value & root);
-  bool getEpg(time_t start, bool smallDuration, Json::Value & root);
+  bool getEpg(time_t start, bool smallDuration, const std::string & channels, Json::Value & root);
   bool getPvr(Json::Value & root);
   std::string getRecordingUrl(const std::string &recId);
   bool getTimeShiftInfo(const std::string &eventId
