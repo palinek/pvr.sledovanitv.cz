@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="pvr.sledovanitv.cz"
-  version="1.3.1"
+  version="1.3.2"
   name="PVR Client for sledovanitv.cz (unofficial)"
   provider-name="palinek">
   <requires>@ADDON_DEPENDS@</requires>
@@ -19,5 +19,8 @@
     <disclaimer lang="cs">Tento program je rozšiřován v naději, že bude užitečný, avšak BEZ JAKÉKOLIV ZÁRUKY. Autoři nejsou žádným způsobem zodpovědní za selhání při nahrávání, neplatné časovače, ztracený čas, či jakékoliv jiné nežádoucí události...</disclaimer>
     <disclaimer lang="sk">Tento program je rozširovaný v nádeji, že bude užitočný, avšak BEZ AKEJKOĽVEK ZÁRUKY. Autori žiadnym spôsobom nenesú zodpovednosť za zlyhanie pri nahrávaní, neplatné časovače, stratený čas, či akékoľvek iné nežiadúce dopady...</disclaimer>
     <platform>@PLATFORM@</platform>
+    <assets>
+      <icon>resources/logo.png</icon>
+    </assets>
   </extension>
 </addon>
