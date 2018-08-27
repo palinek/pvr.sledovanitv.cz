@@ -299,13 +299,15 @@ bool ApiManager::getStreamQualities(Json::Value & root)
     return isSuccess(apiCall("get-stream-qualities", ApiParamMap()), root);
 }
 
-bool ApiManager::getEpg(time_t start, bool smallDuration, Json::Value & root)
+bool ApiManager::getEpg(time_t start, bool smallDuration, const std::string & channels, Json::Value & root)
 {
   ApiParamMap params;
 
   params["time"] = formatTime(start);
   params["duration"] = smallDuration ? "60" : "1439";
   params["detail"] = "1";
+  if (!channels.empty())
+    params["channels"] = std::move(channels);
 
   return isSuccess(apiCall("epg", params), root);
 }

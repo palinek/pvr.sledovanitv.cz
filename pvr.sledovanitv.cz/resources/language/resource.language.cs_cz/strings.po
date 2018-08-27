@@ -50,6 +50,10 @@ msgctxt "#30006"
 msgid "Use inputstream.adaptive addon"
 msgstr "Využít doplněk inputstream.adaptive"
 
+msgctxt "#30007"
+msgid "Show unavailable channels"
+msgstr "Zobrazovat nedostupné kanály"
+
 msgctxt "#30100"
 msgid "Refresh times"
 msgstr "Časy aktualizace"
@@ -69,3 +73,7 @@ msgstr "Interval 'keep-alive' volaní"
 msgctxt "#30104"
 msgid "Interval of EPG checks"
 msgstr "Interval oveřování EPG"
+
+msgctxt "#30201"
+msgid "unavailable"
+msgstr "nedostupné"

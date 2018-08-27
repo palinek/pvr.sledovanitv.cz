@@ -140,6 +140,11 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
   {
     cfg.useAdaptive = false;
   }
+
+  if (!XBMC->GetSetting("showLockedChannels", &cfg.showLockedChannels))
+  {
+    cfg.showLockedChannels = true;
+  }
 }
 
 static PVR_ERROR FillStreamProperties(const properties_t & props, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)

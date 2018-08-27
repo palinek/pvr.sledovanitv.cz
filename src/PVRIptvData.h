@@ -95,6 +95,7 @@ struct PVRIptvRecording
   int			duration;
   std::string strDirectory;
   bool bRadio;
+  int iLifeTime;
 };
 
 struct PVRIptvTimer
@@ -115,6 +116,8 @@ struct PVRIptvTimer
   unsigned int    iMarginEnd;
   int             iGenreType;
   int             iGenreSubType;
+  int iLifeTime;
+  std::string strDirectory;
 };
 
 typedef std::vector<PVRIptvChannelGroup> group_container_t;
@@ -136,6 +139,7 @@ struct PVRIptvConfiguration
   unsigned epgCheckDelay; //!< delay (seconds) between checking if EPG load is needed
   bool useH265; //!< flag, if h265 codec should be requested
   bool useAdaptive; //!< flag, if inpustream.adaptive (aka adaptive bitrate streaming) should be used/requested
+  bool showLockedChannels; //!< flag, if unavailable/locked channels should be presented
 };
 
 class PVRIptvData : public P8PLATFORM::CThread
@@ -186,6 +190,7 @@ protected:
   bool WaitForChannels() const;
   void TriggerFullRefresh();
   bool RecordingExists(const std::string & recordId) const;
+  std::string ChannelsList() const;
 
 protected:
   virtual void *Process(void) override;
@@ -220,6 +225,7 @@ private:
   unsigned m_epgCheckDelay;
   bool m_useH265;
   bool m_useAdaptive;
+  bool m_showLockedChannels;
 
   ApiManager                        m_manager;
 };

@@ -46,6 +46,11 @@ template <int N> void strAssign(char (&dst)[N], const std::string & src)
   dst[N - 1] = '\0'; // just to be sure
 }
 
+static void xbmcStrFree(char * str)
+{
+  XBMC->FreeString(str);
+}
+
 PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   : m_bKeepAlive{true}
   , m_bLoadRecordings{true}
@@ -70,6 +75,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_epgCheckDelay{cfg.epgCheckDelay}
   , m_useH265{cfg.useH265}
   , m_useAdaptive{cfg.useAdaptive}
+  , m_showLockedChannels{cfg.showLockedChannels}
   , m_manager{std::move(cfg.userName), std::move(cfg.password)}
 {
 
@@ -327,7 +333,7 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
 
   Json::Value root;
 
-  if (!m_manager.getEpg(iStart, bSmallStep, root))
+  if (!m_manager.getEpg(iStart, bSmallStep, ChannelsList(), root))
   {
     XBMC->Log(LOG_NOTICE, "Cannot parse EPG data. EPG not loaded.");
     m_bEGPLoaded = true;
@@ -472,6 +478,18 @@ bool PVRIptvData::LoadRecordings()
   for (unsigned int i = 0; i < records.size(); i++)
   {
     Json::Value record = records[i];
+    const std::string title = record.get("title", "").asString();
+    const std::string locked = record.get("channelLocked", "none").asString();
+    std::string directory;
+    if (locked != "none")
+    {
+      //Note: std::make_unique is available from c++14
+      std::unique_ptr<char, decltype (&xbmcStrFree)> loc{XBMC->GetLocalizedString(30201), &xbmcStrFree};
+      directory = loc.get();
+      directory += " - ";
+      directory += locked;
+      XBMC->Log(LOG_INFO, "Timer/recording '%s' is locked(%s)", title.c_str(), locked.c_str());
+    }
     std::string str_ch_id = record.get("channel", "").asString();
     const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&str_ch_id] (const PVRIptvChannel & ch) { return ch.strId == str_ch_id; });
     PVRIptvRecording iptvrecording;
@@ -486,9 +504,7 @@ bool PVRIptvData::LoadRecordings()
       char buf[256];
       sprintf(buf, "%d", record.get("id", 0).asInt());
       iptvrecording.strRecordId = buf;
-      iptvrecording.strTitle = record.get("title", "").asString();
-
-      XBMC->Log(LOG_DEBUG, "Loading recording '%s'", iptvrecording.strTitle.c_str());
+      iptvrecording.strTitle = std::move(title);
 
       if (channel_i != channels->cend())
       {
@@ -498,6 +514,10 @@ bool PVRIptvData::LoadRecordings()
       iptvrecording.strPlotOutline = record.get("event", "").get("description", "").asString();
       iptvrecording.duration = duration;
       iptvrecording.bRadio = channel_i->bIsRadio;
+      iptvrecording.iLifeTime = (ParseDateTime(record.get("expires", "").asString() + "00:00") - now) / 86400;
+      iptvrecording.strDirectory = std::move(directory);
+
+      XBMC->Log(LOG_DEBUG, "Loading recording '%s'", iptvrecording.strTitle.c_str());
 
       new_recordings->push_back(iptvrecording);
     }
@@ -519,7 +539,9 @@ bool PVRIptvData::LoadRecordings()
       {
         iptvtimer.state = PVR_TIMER_STATE_SCHEDULED;
       }
-      iptvtimer.strTitle = record.get("title", "").asString();
+      iptvtimer.strTitle = std::move(title);
+      iptvtimer.iLifeTime = (ParseDateTime(record.get("expires", "").asString() + "00:00") - now) / 86400;
+      iptvtimer.strDirectory = std::move(directory);
 
       XBMC->Log(LOG_DEBUG, "Loading timer '%s'", iptvtimer.strTitle.c_str());
 
@@ -601,6 +623,16 @@ bool PVRIptvData::LoadPlayList(void)
   for (unsigned int i = 0; i < channels.size(); i++)
   {
     Json::Value channel = channels[i];
+    if (!m_showLockedChannels)
+    {
+      const std::string locked = channel.get("locked", "none").asString();
+      if (locked != "none")
+      {
+        XBMC->Log(LOG_INFO, "Skipping locked(%s) channel %s", locked.c_str(), channel.get("name", "").asString().c_str());
+        continue;
+      }
+    }
+
     PVRIptvChannel iptvchan;
 
     iptvchan.strId = channel.get("id", "").asString();
@@ -954,6 +986,7 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
     strAssign(xbmcRecord.strPlotOutline, rec.strPlotOutline);
     strAssign(xbmcRecord.strPlot, rec.strPlotOutline);
     xbmcRecord.iDuration = rec.duration;
+    xbmcRecord.iLifetime = rec.iLifeTime;
     xbmcRecord.channelType = rec.bRadio ? PVR_RECORDING_CHANNEL_TYPE_RADIO : PVR_RECORDING_CHANNEL_TYPE_TV;
 
     xbmc_records.push_back(std::move(xbmcRecord));
@@ -1024,8 +1057,10 @@ PVR_ERROR PVRIptvData::GetTimers(ADDON_HANDLE handle)
     xbmcTimer.startTime = timer.startTime;
     xbmcTimer.endTime = timer.endTime;
     xbmcTimer.state = timer.state;
+    xbmcTimer.iLifetime = timer.iLifeTime;
     strAssign(xbmcTimer.strTitle, timer.strTitle);
     strAssign(xbmcTimer.strSummary, timer.strSummary);
+    strAssign(xbmcTimer.strDirectory, timer.strDirectory);
 
     xbmc_timers.push_back(std::move(xbmcTimer));
   }
@@ -1130,4 +1165,24 @@ properties_t PVRIptvData::GetStreamProperties(const std::string & url, bool isLi
   if (isLive)
     props[PVR_STREAM_PROPERTY_ISREALTIMESTREAM] = "true";
   return props;
+}
+
+std::string PVRIptvData::ChannelsList() const
+{
+  decltype (m_channels) channels;
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    channels = m_channels;
+  }
+  std::ostringstream os;
+  bool first = true;
+  std::for_each(channels->cbegin(), channels->cend(), [&os, &first] (channel_container_t::const_reference chan)
+      {
+        if (first)
+          first = false;
+        else
+          os << ",";
+        os << chan.strId;
+      });
+  return os.str();
 }
