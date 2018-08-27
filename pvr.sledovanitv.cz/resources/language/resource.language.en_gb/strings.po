@@ -73,3 +73,7 @@ msgstr "Interval of keep-alive calls"
 msgctxt "#30104"
 msgid "Interval of EPG checks"
 msgstr "Interval of EPG checks"
+
+msgctxt "#30201"
+msgid "unavailable"
+msgstr "unavailable"

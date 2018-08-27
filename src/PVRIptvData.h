@@ -95,6 +95,7 @@ struct PVRIptvRecording
   int			duration;
   std::string strDirectory;
   bool bRadio;
+  int iLifeTime;
 };
 
 struct PVRIptvTimer
@@ -115,6 +116,8 @@ struct PVRIptvTimer
   unsigned int    iMarginEnd;
   int             iGenreType;
   int             iGenreSubType;
+  int iLifeTime;
+  std::string strDirectory;
 };
 
 typedef std::vector<PVRIptvChannelGroup> group_container_t;

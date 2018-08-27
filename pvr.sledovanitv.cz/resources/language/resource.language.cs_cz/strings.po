@@ -73,3 +73,7 @@ msgstr "Interval 'keep-alive' volaní"
 msgctxt "#30104"
 msgid "Interval of EPG checks"
 msgstr "Interval oveřování EPG"
+
+msgctxt "#30201"
+msgid "unavailable"
+msgstr "nedostupné"
