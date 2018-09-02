@@ -37,8 +37,10 @@
 #include "apimanager.h"
 #include <ctime>
 #include <sstream>
+#include <iomanip>
 #include <algorithm>
 #include <atomic>
+#include <openssl/sha.h>
 
 using namespace ADDON;
 
@@ -189,11 +191,18 @@ bool ApiManager::pairDevice()
     std::string macAddr = "11:22:33:44";
 #endif
 
+    // compute SHA1 of string representation of MAC address
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    SHA1(reinterpret_cast<unsigned char const *>(macAddr.c_str()), macAddr.size(), hash);
+    std::ostringstream serial;
+    for (const auto c : hash)
+      serial << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(c);
+
     params["username"] = m_userName;
     params["password"] = m_userPassword;
     params["type"] = "androidportable";
     params["product"] = hostName;
-    params["serial"] = macAddr;
+    params["serial"] = serial.str();
     params["unit"] = "default";
     //params["checkLimit"] = "1";
 
