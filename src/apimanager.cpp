@@ -25,11 +25,16 @@
  */
 
 #include <json/json.h>
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #include <winsock2.h>
+#include <iphlpapi.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "IPHLPAPI.lib")
+#pragma comment(lib, "WSOCK32.lib")
 #else
 #include <unistd.h>
 #endif
+
 #include <fstream>
 #include <iostream>
 
@@ -165,11 +170,11 @@ bool ApiManager::pairDevice()
     new_pairing = true;
     ApiParamMap params;
 
-#ifndef _WIN32
     char hostName[256];
     gethostname(hostName, 256);
 
     std::string macAddr;
+#ifndef TARGET_WINDOWS
     constexpr char const * const iface_possibilities[] = {
       "/sys/class/net/eth0/address"
         , "/sys/class/net/wlan0/address"
@@ -184,12 +189,46 @@ bool ApiManager::pairDevice()
         std::getline(ifs, macAddr);
       }
       if (!macAddr.empty())
+      {
+        macAddr.erase(std::remove(macAddr.begin(), macAddr.end(), ':'), macAddr.end());
         break;
+      }
     }
 #else
-    char *hostName = "Kodi Win32";
-    std::string macAddr = "11:22:33:44";
+    std::unique_ptr<IP_ADAPTER_ADDRESSES, void (*)(void *)> pAddresses{static_cast<IP_ADAPTER_ADDRESSES *>(malloc(15 * 1024)), &free};
+    ULONG outBufLen = 0;
+
+    if (GetAdaptersAddresses(AF_UNSPEC, 0, NULL, pAddresses.get(), &outBufLen) == ERROR_BUFFER_OVERFLOW)
+    {
+        pAddresses.reset(static_cast<IP_ADAPTER_ADDRESSES *>(malloc(outBufLen)));
+    }
+
+    if (GetAdaptersAddresses(AF_UNSPEC, 0,  NULL,  pAddresses.get(), &outBufLen) == NO_ERROR)
+    {
+      IP_ADAPTER_ADDRESSES * p_addr = pAddresses.get();
+      while (p_addr)
+      {
+        if (p_addr->PhysicalAddressLength > 0)
+        {
+          std::ostringstream addr;
+          for (int i = 0; i < p_addr->PhysicalAddressLength; ++i)
+            addr << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(p_addr->PhysicalAddress[i]);
+          macAddr = addr.str();
+          break;
+        }
+        p_addr = p_addr->Next;
+      }
+    } else
+    {
+      XBMC->Log(LOG_NOTICE, "GetAdaptersAddresses failed...");
+    }
 #endif
+
+    if (macAddr.empty())
+    {
+      XBMC->Log(LOG_NOTICE, "Unable to get MAC address, using a dummy for serial");
+      macAddr = "11223344";
+    }
 
     // compute SHA1 of string representation of MAC address
     unsigned char hash[SHA_DIGEST_LENGTH];
