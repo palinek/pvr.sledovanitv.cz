@@ -16,10 +16,12 @@ include_directories(${kodiplatform_INCLUDE_DIRS}
                     ${p8-platform_INCLUDE_DIRS}
                     ${KODI_INCLUDE_DIR}
                     ${JSONCPP_INCLUDE_DIRS}
-                    ${OpenSSL_INCLUDE_DIRS})
+                    ${OPENSSL_INCLUDE_DIRS}
+                    ${OPENSSL_INCLUDE_DIR})
 
 set(DEPLIBS ${p8-platform_LIBRARIES}
-            ${JSONCPP_LIBRARIES})
+            ${JSONCPP_LIBRARIES}
+            ${OPENSSL_LIBRARIES})
 
 
 set(SLEDOVANITV_SOURCES src/client.cpp
