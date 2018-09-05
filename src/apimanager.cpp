@@ -40,12 +40,12 @@
 
 #include "client.h"
 #include "apimanager.h"
+#include "picosha2.h"
 #include <ctime>
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <atomic>
-#include <openssl/sha.h>
 
 using namespace ADDON;
 
@@ -230,18 +230,12 @@ bool ApiManager::pairDevice()
       macAddr = "11223344";
     }
 
-    // compute SHA1 of string representation of MAC address
-    unsigned char hash[SHA_DIGEST_LENGTH];
-    SHA1(reinterpret_cast<unsigned char const *>(macAddr.c_str()), macAddr.size(), hash);
-    std::ostringstream serial;
-    for (const auto c : hash)
-      serial << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(c);
-
     params["username"] = m_userName;
     params["password"] = m_userPassword;
     params["type"] = "androidportable";
     params["product"] = hostName;
-    params["serial"] = serial.str();
+    // compute SHA256 of string representation of MAC address
+    params["serial"] = picosha2::hash256_hex_string(macAddr);
     params["unit"] = "default";
     //params["checkLimit"] = "1";
 
