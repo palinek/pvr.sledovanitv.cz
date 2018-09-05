@@ -331,12 +331,12 @@ PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* propert
   if (!tag || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
-  std::string stream_url;
-  PVR_ERROR ret = data->GetEPGStreamUrl(tag, stream_url);
+  std::string stream_url, stream_type;
+  PVR_ERROR ret = data->GetEPGStreamUrl(tag, stream_url, stream_type);
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  return FillStreamProperties(data->GetStreamProperties(stream_url, false), properties, iPropertiesCount);
+  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, false), properties, iPropertiesCount);
 }
 
 int GetChannelsAmount(void)
@@ -363,12 +363,12 @@ PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE
   if (!channel || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
-  std::string stream_url;
-  PVR_ERROR ret = data->GetChannelStreamUrl(channel, stream_url);
+  std::string stream_url, stream_type;
+  PVR_ERROR ret = data->GetChannelStreamUrl(channel, stream_url, stream_type);
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  return FillStreamProperties(data->GetStreamProperties(stream_url, true), properties, iPropertiesCount);
+  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, true), properties, iPropertiesCount);
 }
 
 int GetChannelGroupsAmount(void)
@@ -438,12 +438,12 @@ PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED
   if (!recording || !properties || !iPropertiesCount || !data)
     return PVR_ERROR_SERVER_ERROR;
 
-  std::string stream_url;
-  PVR_ERROR ret = data->GetRecordingStreamUrl(recording->strRecordingId, stream_url);
+  std::string stream_url, stream_type;
+  PVR_ERROR ret = data->GetRecordingStreamUrl(recording->strRecordingId, stream_url, stream_type);
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  return FillStreamProperties(data->GetStreamProperties(stream_url, false), properties, iPropertiesCount);
+  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, false), properties, iPropertiesCount);
 }
 
 /** TIMER FUNCTIONS */

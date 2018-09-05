@@ -59,9 +59,10 @@ public:
   bool getStreamQualities(Json::Value & root);
   bool getEpg(time_t start, bool smallDuration, const std::string & channels, Json::Value & root);
   bool getPvr(Json::Value & root);
-  std::string getRecordingUrl(const std::string &recId);
+  std::string getRecordingUrl(const std::string &recId, std::string & channel);
   bool getTimeShiftInfo(const std::string &eventId
       , std::string & streamUrl
+      , std::string & channel
       , int & duration) const;
   bool addTimer(const std::string & eventId, std::string & recordId);
   bool deleteRecord(const std::string &recId);

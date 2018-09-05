@@ -48,7 +48,6 @@ struct PVRIptvEpgEntry
   std::string strIconPath;
   std::string strGenreString;
   std::string strEventId;
-  std::string strStreamURL;
   bool availableTimeshift;
   std::string strRecordId; // optionally recorded
 };
@@ -73,6 +72,7 @@ struct PVRIptvChannel
   std::string strStreamURL;
   std::string strId;
   std::string strGroupId;
+  std::string strStreamType;
 };
 
 struct PVRIptvChannelGroup
@@ -96,6 +96,7 @@ struct PVRIptvRecording
   std::string strDirectory;
   bool bRadio;
   int iLifeTime;
+  std::string strStreamType;
 };
 
 struct PVRIptvTimer
@@ -150,18 +151,18 @@ public:
 
   int GetChannelsAmount(void);
   PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
-  PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl) const;
+  PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType) const;
   PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
   PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const;
   PVR_ERROR IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const;
-  PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl) const;
+  PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType) const;
   PVR_ERROR SetEPGTimeFrame(int iDays);
   int GetChannelGroupsAmount(void);
   PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio);
   PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
   int GetRecordingsAmount();
   PVR_ERROR GetRecordings(ADDON_HANDLE handle);
-  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl) const;
+  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType) const;
   void GetRecordingsUrls();
   int GetTimersAmount();
   PVR_ERROR GetTimers(ADDON_HANDLE handle);
@@ -170,7 +171,7 @@ public:
   PVR_ERROR DeleteRecord(int iRecordId);
   PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed);
   bool LoggedIn() const;
-  properties_t GetStreamProperties(const std::string & url, bool isLive) const;
+  properties_t GetStreamProperties(const std::string & url, const std::string & streamType, bool isLive) const;
 
 protected:
   static int ParseDateTime(std::string strDate);
@@ -191,6 +192,7 @@ protected:
   void TriggerFullRefresh();
   bool RecordingExists(const std::string & recordId) const;
   std::string ChannelsList() const;
+  std::string ChannelStreamType(const std::string & channelId) const;
 
 protected:
   virtual void *Process(void) override;

@@ -359,7 +359,7 @@ bool ApiManager::getPvr(Json::Value & root)
   return isSuccess(apiCall("get-pvr", ApiParamMap()), root);
 }
 
-std::string ApiManager::getRecordingUrl(const std::string &recId)
+std::string ApiManager::getRecordingUrl(const std::string &recId, std::string & channel)
 {
   ApiParamMap param;
   param["recordId"] = recId;
@@ -369,6 +369,7 @@ std::string ApiManager::getRecordingUrl(const std::string &recId)
 
   if (isSuccess(apiCall("record-timeshift", param), root))
   {
+    channel = root.get("channel", "").asString();
     return root.get("url", "").asString();
   }
 
@@ -377,6 +378,7 @@ std::string ApiManager::getRecordingUrl(const std::string &recId)
 
 bool ApiManager::getTimeShiftInfo(const std::string &eventId
     , std::string & streamUrl
+    , std::string & channel
     , int & duration) const
 {
   ApiParamMap param;
@@ -388,6 +390,7 @@ bool ApiManager::getTimeShiftInfo(const std::string &eventId
   if (isSuccess(apiCall("event-timeshift", param), root))
   {
     streamUrl = root.get("url", "").asString();
+    channel = root.get("channel", "").asString();
     duration = root.get("duration", 0).asInt();
     return true;
   }
