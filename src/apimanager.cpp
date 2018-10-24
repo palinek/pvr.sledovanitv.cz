@@ -25,14 +25,24 @@
  */
 
 #include <json/json.h>
-#ifdef TARGET_WINDOWS
+#if defined(TARGET_POSIX)
+#include <unistd.h>
+#endif
+#if defined(TARGET_LINUX) || defined(TARGET_FREEBSD) || defined(TARGET_DARWIN)
+#include <net/if.h>
+#include <ifaddrs.h>
+# if defined(TARGET_LINUX)
+#include <linux/if_packet.h>
+# else //defined(TARGET_FREEBSD) || defined(TARGET_DARWIN)
+#include <net/if_types.h>
+#include <net/if_dl.h>
+# endif
+#elif defined(TARGET_WINDOWS)
 #include <winsock2.h>
 #include <iphlpapi.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "IPHLPAPI.lib")
 #pragma comment(lib, "WSOCK32.lib")
-#else
-#include <unistd.h>
 #endif
 
 #include <fstream>
@@ -86,7 +96,41 @@ char *url_encode(const char *str)
 static std::string get_mac_address()
 {
   std::string mac_addr;
-#ifdef TARGET_WINDOWS
+#if defined(TARGET_LINUX) || defined(TARGET_FREEBSD) || defined(TARGET_DARWIN)
+    struct ifaddrs * addrs;
+    if (0 != getifaddrs(&addrs))
+    {
+      XBMC->Log(LOG_NOTICE, "While getting MAC address getifaddrs() failed, %s", strerror(errno));
+      return mac_addr;
+    }
+    std::unique_ptr<struct ifaddrs, decltype (&freeifaddrs)> if_addrs{addrs, &freeifaddrs};
+    for (struct ifaddrs * p = if_addrs.get(); p; p = p->ifa_next)
+    {
+#if defined(TARGET_LINUX)
+      if (nullptr != p->ifa_addr && p->ifa_addr->sa_family == AF_PACKET && 0 == (p->ifa_flags & IFF_LOOPBACK))
+      {
+        struct sockaddr_ll * address = reinterpret_cast<struct sockaddr_ll *>(p->ifa_addr);
+        std::ostringstream addr;
+        for (int i = 0; i < address->sll_halen; ++i)
+          addr << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(address->sll_addr[i]);
+        mac_addr = addr.str();
+        break;
+      }
+#else
+      if (nullptr != p->ifa_addr && p->ifa_addr->sa_family == AF_LINK)
+      {
+        struct sockaddr_dl * address = reinterpret_cast<struct sockaddr_dl *>(p->ifa_addr);
+        if (address->sdl_type == IFT_LOOP)
+          continue;
+        std::ostringstream addr;
+        for (int i = 0; i < address->sdl_alen; ++i)
+          addr << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(*(address->sdl_data + address->sdl_nlen + i));
+        mac_addr = addr.str();
+        break;
+      }
+#endif
+    }
+#elif defined(TARGET_WINDOWS)
     std::unique_ptr<IP_ADAPTER_ADDRESSES, void (*)(void *)> pAddresses{static_cast<IP_ADAPTER_ADDRESSES *>(malloc(15 * 1024)), &free};
     ULONG outBufLen = 0;
 
@@ -113,26 +157,6 @@ static std::string get_mac_address()
     } else
     {
       XBMC->Log(LOG_NOTICE, "GetAdaptersAddresses failed...");
-    }
-#else
-    constexpr char const * const iface_possibilities[] = {
-      "/sys/class/net/eth0/address"
-        , "/sys/class/net/wlan0/address"
-        , "/sys/class/net/eth1/address"
-        , "/sys/class/net/wlan1/address"
-    };
-    for (const auto & file : iface_possibilities)
-    {
-      std::ifstream ifs(file);
-      if (ifs.is_open())
-      {
-        std::getline(ifs, mac_addr);
-      }
-      if (!mac_addr.empty())
-      {
-        mac_addr.erase(std::remove(mac_addr.begin(), mac_addr.end(), ':'), mac_addr.end());
-        break;
-      }
     }
 #endif
     return mac_addr;
@@ -228,7 +252,7 @@ bool ApiManager::pairDevice()
     char hostName[256];
     gethostname(hostName, 256);
 
-    const std::string macAddr = get_mac_address();
+    std::string macAddr = get_mac_address();
     if (macAddr.empty())
     {
       XBMC->Log(LOG_NOTICE, "Unable to get MAC address, using a dummy for serial");
