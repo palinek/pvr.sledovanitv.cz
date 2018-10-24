@@ -83,6 +83,61 @@ char *url_encode(const char *str)
   return buf;
 }
 
+static std::string get_mac_address()
+{
+  std::string mac_addr;
+#ifdef TARGET_WINDOWS
+    std::unique_ptr<IP_ADAPTER_ADDRESSES, void (*)(void *)> pAddresses{static_cast<IP_ADAPTER_ADDRESSES *>(malloc(15 * 1024)), &free};
+    ULONG outBufLen = 0;
+
+    if (GetAdaptersAddresses(AF_UNSPEC, 0, NULL, pAddresses.get(), &outBufLen) == ERROR_BUFFER_OVERFLOW)
+    {
+        pAddresses.reset(static_cast<IP_ADAPTER_ADDRESSES *>(malloc(outBufLen)));
+    }
+
+    if (GetAdaptersAddresses(AF_UNSPEC, 0,  NULL,  pAddresses.get(), &outBufLen) == NO_ERROR)
+    {
+      IP_ADAPTER_ADDRESSES * p_addr = pAddresses.get();
+      while (p_addr)
+      {
+        if (p_addr->PhysicalAddressLength > 0)
+        {
+          std::ostringstream addr;
+          for (int i = 0; i < p_addr->PhysicalAddressLength; ++i)
+            addr << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(p_addr->PhysicalAddress[i]);
+          mac_addr = addr.str();
+          break;
+        }
+        p_addr = p_addr->Next;
+      }
+    } else
+    {
+      XBMC->Log(LOG_NOTICE, "GetAdaptersAddresses failed...");
+    }
+#else
+    constexpr char const * const iface_possibilities[] = {
+      "/sys/class/net/eth0/address"
+        , "/sys/class/net/wlan0/address"
+        , "/sys/class/net/eth1/address"
+        , "/sys/class/net/wlan1/address"
+    };
+    for (const auto & file : iface_possibilities)
+    {
+      std::ifstream ifs(file);
+      if (ifs.is_open())
+      {
+        std::getline(ifs, mac_addr);
+      }
+      if (!mac_addr.empty())
+      {
+        mac_addr.erase(std::remove(mac_addr.begin(), mac_addr.end(), ':'), mac_addr.end());
+        break;
+      }
+    }
+#endif
+    return mac_addr;
+}
+
 std::string ApiManager::formatTime(time_t t)
 {
   std::string buf(17, ' ');
@@ -173,57 +228,7 @@ bool ApiManager::pairDevice()
     char hostName[256];
     gethostname(hostName, 256);
 
-    std::string macAddr;
-#ifndef TARGET_WINDOWS
-    constexpr char const * const iface_possibilities[] = {
-      "/sys/class/net/eth0/address"
-        , "/sys/class/net/wlan0/address"
-        , "/sys/class/net/eth1/address"
-        , "/sys/class/net/wlan1/address"
-    };
-    for (const auto & file : iface_possibilities)
-    {
-      std::ifstream ifs(file);
-      if (ifs.is_open())
-      {
-        std::getline(ifs, macAddr);
-      }
-      if (!macAddr.empty())
-      {
-        macAddr.erase(std::remove(macAddr.begin(), macAddr.end(), ':'), macAddr.end());
-        break;
-      }
-    }
-#else
-    std::unique_ptr<IP_ADAPTER_ADDRESSES, void (*)(void *)> pAddresses{static_cast<IP_ADAPTER_ADDRESSES *>(malloc(15 * 1024)), &free};
-    ULONG outBufLen = 0;
-
-    if (GetAdaptersAddresses(AF_UNSPEC, 0, NULL, pAddresses.get(), &outBufLen) == ERROR_BUFFER_OVERFLOW)
-    {
-        pAddresses.reset(static_cast<IP_ADAPTER_ADDRESSES *>(malloc(outBufLen)));
-    }
-
-    if (GetAdaptersAddresses(AF_UNSPEC, 0,  NULL,  pAddresses.get(), &outBufLen) == NO_ERROR)
-    {
-      IP_ADAPTER_ADDRESSES * p_addr = pAddresses.get();
-      while (p_addr)
-      {
-        if (p_addr->PhysicalAddressLength > 0)
-        {
-          std::ostringstream addr;
-          for (int i = 0; i < p_addr->PhysicalAddressLength; ++i)
-            addr << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(p_addr->PhysicalAddress[i]);
-          macAddr = addr.str();
-          break;
-        }
-        p_addr = p_addr->Next;
-      }
-    } else
-    {
-      XBMC->Log(LOG_NOTICE, "GetAdaptersAddresses failed...");
-    }
-#endif
-
+    const std::string macAddr = get_mac_address();
     if (macAddr.empty())
     {
       XBMC->Log(LOG_NOTICE, "Unable to get MAC address, using a dummy for serial");
