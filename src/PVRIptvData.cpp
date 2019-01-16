@@ -845,8 +845,11 @@ PVR_ERROR PVRIptvData::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &
 {
   XBMC->Log(LOG_DEBUG, "%s %s, from=%s to=%s", __FUNCTION__, channel.strChannelName, ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(iEnd).c_str());
   std::lock_guard<std::mutex> critical(m_mutex);
-  m_epgMinTime = iStart;
-  m_epgMaxTime = iEnd;
+  // Note: For future scheduled timers Kodi requests EPG (this function) with
+  // iStart & iEnd as given by the timer timespan. But we don't want to narrow
+  // our EPG interval in such cases.
+  m_epgMinTime = iStart < m_epgMinTime ? iStart : m_epgMinTime;
+  m_epgMaxTime = iEnd > m_epgMaxTime ? iEnd : m_epgMaxTime;
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -944,6 +947,7 @@ PVR_ERROR PVRIptvData::SetEPGTimeFrame(int iDays)
   XBMC->Log(LOG_DEBUG, "%s iDays=%d", __FUNCTION__, iDays);
   time_t now = time(nullptr);
   std::lock_guard<std::mutex> critical(m_mutex);
+  m_epgMinTime = now;
   m_epgMaxTime = now + iDays * 86400;
   m_epgMaxDays = iDays;
 
