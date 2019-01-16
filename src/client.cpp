@@ -470,6 +470,27 @@ PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
   XBMC->Log(LOG_DEBUG, "%s - size: %d", __FUNCTION__, *size);
   int pos = 0;
   types[pos].iId = pos + 1;
+  types[pos].iAttributes = PVR_TIMER_TYPE_IS_MANUAL | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME;
+  types[pos].strDescription[0] = '\0'; // let Kodi generate the description
+  types[pos].iPrioritiesSize = 0; // no priorities needed
+  //types[pos].priorities
+  //types[pos].iPrioritiesDefault = 0;
+  types[pos].iLifetimesSize = 0; // no lifetime settings supported yet
+  //types[pos].lifetimes
+  //types[pos].iLifetimesDefault = 0;
+  types[pos].iPreventDuplicateEpisodesSize = 0;
+  //types[pos].preventDuplicateEpisodes
+  //types[pos].iPreventDuplicateEpisodesDefault = 0;
+  types[pos].iRecordingGroupSize = 0;
+  //types[pos].maxRecordings
+  //types[pos].iRecordingGroupDefault = 0;
+  types[pos].iMaxRecordingsSize = 0;
+  //types[pos].maxRecordings
+  //types[pos].iMaxRecordingsDefault = 0;
+  XBMC->Log(LOG_DEBUG, "%s - attributes: 0x%x", __FUNCTION__, types[pos].iAttributes);
+
+  ++pos;
+  types[pos].iId = pos + 1;
   types[pos].iAttributes = PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME;
   types[pos].strDescription[0] = '\0'; // let Kodi generate the description
   types[pos].iPrioritiesSize = 0; // no priorities needed

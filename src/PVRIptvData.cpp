@@ -1072,6 +1072,7 @@ PVR_ERROR PVRIptvData::GetTimers(ADDON_HANDLE handle)
     xbmcTimer.startTime = timer.startTime;
     xbmcTimer.endTime = timer.endTime;
     xbmcTimer.state = timer.state;
+    xbmcTimer.iTimerType = 1; // Note: this must match some type from GetTimerTypes()
     xbmcTimer.iLifetime = timer.iLifeTime;
     strAssign(xbmcTimer.strTitle, timer.strTitle);
     strAssign(xbmcTimer.strSummary, timer.strSummary);
