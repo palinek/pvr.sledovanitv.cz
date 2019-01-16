@@ -85,10 +85,10 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   CreateThread();
 }
 
-void PVRIptvData::LoadRecordingsJob()
+bool PVRIptvData::LoadRecordingsJob()
 {
   if (!KeepAlive())
-    return;
+    return false;
 
   bool load = false;
   {
@@ -103,6 +103,7 @@ void PVRIptvData::LoadRecordingsJob()
   {
     LoadRecordings();
   }
+  return load;
 }
 
 void PVRIptvData::SetLoadRecordings()
@@ -281,7 +282,7 @@ void *PVRIptvData::Process(void)
 
     work_done = false;
 
-    LoadRecordingsJob();
+    work_done |= LoadRecordingsJob();
 
     // trigger full refresh once a time
     work_done |= trigger_full_refresh.Call();

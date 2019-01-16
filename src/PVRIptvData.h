@@ -185,7 +185,7 @@ protected:
   //! \return true if actual update was performed
   bool LoadEPGJob();
   bool LoadRecordings();
-  void LoadRecordingsJob();
+  bool LoadRecordingsJob();
   void SetLoadRecordings();
   void LoginLoop();
   bool WaitForChannels() const;
