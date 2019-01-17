@@ -1,0 +1,22 @@
+Source: kodi-pvr-sledovanitv-cz
+Priority: extra
+Maintainer: Nobody <nobody@kodi.tv>
+Build-Depends: debhelper (>= 9.0.0), cmake, libkodiplatform-dev (>= 16.0.0),
+               kodi-addon-dev
+Standards-Version: 3.9.5
+Section: libs
+
+Package: kodi-pvr-sledovanitv-cz
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: sledovanitv.cz PVR for Kodi
+ sledovanitv.cz PVR for Kodi
+
+Package: kodi-pvr-sledovanitv-cz-dbg
+Section: debug
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: debug symbols for sledovanitv.cz PVR for Kodi
+ debug symbols for sledovanitv.cz PVR for Kodi
+
