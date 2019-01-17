@@ -37,6 +37,9 @@
 #include <net/if_types.h>
 #include <net/if_dl.h>
 # endif
+# if defined(TARGET_ANDROID)
+#include <android/api-level.h>
+# endif
 #elif defined(TARGET_WINDOWS)
 #include <winsock2.h>
 #include <iphlpapi.h>
@@ -93,9 +96,18 @@ char *url_encode(const char *str)
   return buf;
 }
 
+#if defined(TARGET_ANDROID) && __ANDROID_API__ < 24
+// Note: declare dummy "ifaddr" functions to make this compile on pre API-24 versions
+#warning "Compiling for ANDROID with API version < 24, getting MAC addres will not be available."
+static int getifaddrs(struct ifaddrs ** /*ifap*/) { errno = ENOTSUP; return -1; }
+static void freeifaddrs(struct ifaddrs * /*ifa*/) {}
+#endif
 static std::string get_mac_address()
 {
   std::string mac_addr;
+#if defined(TARGET_ANDROID) && __ANDROID_API__ < 24
+  XBMC->Log(LOG_NOTICE, "Can't get MAC address with target Android API < 24 (no getifaddrs() support)");
+#endif
 #if defined(TARGET_LINUX) || defined(TARGET_FREEBSD) || defined(TARGET_DARWIN)
     struct ifaddrs * addrs;
     if (0 != getifaddrs(&addrs))
