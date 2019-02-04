@@ -38,6 +38,13 @@
 #include "apimanager.h"
 #include "CallLimiter.hh"
 
+#if defined(TARGET_WINDOWS)
+# define LOCALTIME_R(src, dst) localtime_s(dst, src)
+# define GMTIME_R(src, dst) localtime_s(dst, src)
+#else
+# define LOCALTIME_R(src, dst) localtime_r(src, dst)
+# define GMTIME_R(src, dst) localtime_r(src, dst)
+#endif
 using namespace std;
 using namespace ADDON;
 
@@ -50,6 +57,25 @@ template <int N> void strAssign(char (&dst)[N], const std::string & src)
 static void xbmcStrFree(char * str)
 {
   XBMC->FreeString(str);
+}
+
+static unsigned DiffBetweenPragueAndLocalTime(const time_t * when = nullptr)
+{
+  time_t tloc;
+  if (0 == when)
+    time(&tloc);
+  else
+    tloc = *when;
+
+  struct tm tm1;
+  LOCALTIME_R(&tloc, &tm1);
+  auto isdst = tm1.tm_isdst;
+  GMTIME_R(&tloc, &tm1);
+  tm1.tm_isdst = isdst;
+  time_t t2 = mktime(&tm1);
+
+  // Note: Prague(Czech) is in Central Europe Time -> CET or CEST == UTC+1 or UTC+2 == +3600 or +7200
+  return tloc - t2 - (isdst > 0 ? 7200 : 3600);
 }
 
 PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
@@ -966,7 +992,8 @@ int PVRIptvData::ParseDateTime(std::string strDate)
   timeinfo.tm_year -= 1900;
   timeinfo.tm_isdst = -1;
 
-  return mktime(&timeinfo);
+  time_t t = mktime(&timeinfo);
+  return t + DiffBetweenPragueAndLocalTime(&t);
 }
 
 int PVRIptvData::GetRecordingsAmount()
