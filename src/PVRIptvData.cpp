@@ -40,10 +40,10 @@
 
 #if defined(TARGET_WINDOWS)
 # define LOCALTIME_R(src, dst) localtime_s(dst, src)
-# define GMTIME_R(src, dst) localtime_s(dst, src)
+# define GMTIME_R(src, dst) gmtime_s(dst, src)
 #else
 # define LOCALTIME_R(src, dst) localtime_r(src, dst)
-# define GMTIME_R(src, dst) localtime_r(src, dst)
+# define GMTIME_R(src, dst) gmtime_r(src, dst)
 #endif
 using namespace std;
 using namespace ADDON;
@@ -425,7 +425,8 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
         iptventry.availableTimeshift = availability == "timeshift" || availability == "pvr";
         iptventry.strRecordId = epgEntry["recordId"].asString();
 
-        XBMC->Log(LOG_DEBUG, "Loading TV show: %s - %s, start=%s", strChId.c_str(), iptventry.strTitle.c_str(), epgEntry.get("startTime", "").asString().c_str());
+        XBMC->Log(LOG_DEBUG, "Loading TV show: %s - %s, start=%s(epoch=%llu)", strChId.c_str(), iptventry.strTitle.c_str()
+            , epgEntry.get("startTime", "").asString().c_str(), static_cast<long long unsigned>(start_time));
 
         // notify about the epg change...and store it
         EPG_TAG tag;
@@ -993,7 +994,7 @@ int PVRIptvData::ParseDateTime(std::string strDate)
   timeinfo.tm_isdst = -1;
 
   time_t t = mktime(&timeinfo);
-  return t + DiffBetweenPragueAndLocalTime(&t);
+  return t - DiffBetweenPragueAndLocalTime(&t);
 }
 
 int PVRIptvData::GetRecordingsAmount()
