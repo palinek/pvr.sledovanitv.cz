@@ -538,6 +538,7 @@ bool PVRIptvData::LoadRecordings()
       if (channel_i != channels->cend())
       {
         iptvrecording.strChannelName = channel_i->strChannelName;
+        iptvrecording.iChannelUid = channel_i->iUniqueId;
       }
       iptvrecording.startTime = startTime;
       iptvrecording.strPlotOutline = record.get("event", "").get("description", "").asString();
@@ -1029,6 +1030,7 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
     strAssign(xbmcRecord.strPlot, rec.strPlotOutline);
     xbmcRecord.iDuration = rec.duration;
     xbmcRecord.iLifetime = rec.iLifeTime;
+    xbmcRecord.iChannelUid = rec.iChannelUid;
     xbmcRecord.channelType = rec.bRadio ? PVR_RECORDING_CHANNEL_TYPE_RADIO : PVR_RECORDING_CHANNEL_TYPE_TV;
 
     xbmc_records.push_back(std::move(xbmcRecord));

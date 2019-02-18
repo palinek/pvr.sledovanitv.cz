@@ -97,6 +97,7 @@ struct PVRIptvRecording
   bool bRadio;
   int iLifeTime;
   std::string strStreamType;
+  int iChannelUid;
 };
 
 struct PVRIptvTimer
