@@ -541,7 +541,7 @@ bool PVRIptvData::LoadRecordings()
         iptvrecording.iChannelUid = channel_i->iUniqueId;
       } else
       {
-        iptvRecording.iChannelUid = PVR_CHANNEL_INVALID_UID;
+        iptvrecording.iChannelUid = PVR_CHANNEL_INVALID_UID;
       }
       iptvrecording.startTime = startTime;
       iptvrecording.strPlotOutline = record.get("event", "").get("description", "").asString();
