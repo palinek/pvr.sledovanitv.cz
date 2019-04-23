@@ -153,7 +153,7 @@ public:
   int GetChannelsAmount(void);
   PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
   PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType) const;
-  PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
+  PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, int iChannelUid, time_t iStart, time_t iEnd);
   PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const;
   PVR_ERROR IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const;
   PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType) const;

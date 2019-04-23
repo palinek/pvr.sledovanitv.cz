@@ -289,11 +289,11 @@ PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
   return PVR_ERROR_SERVER_ERROR;
 }
 
-PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
+PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, int iChannelUid, time_t iStart, time_t iEnd)
 {
   auto data = std::atomic_load(&m_data);
   if (data)
-    return data->GetEPGForChannel(handle, channel, iStart, iEnd);
+    return data->GetEPGForChannel(handle, iChannelUid, iStart, iEnd);
 
   return PVR_ERROR_SERVER_ERROR;
 }
@@ -573,11 +573,6 @@ bool CanPauseStream(void)
   return false;
 }
 
-bool IsTimeshifting(void)
-{
-  return false;
-}
-
 bool IsRealTimeStream()
 {
   return true;
@@ -620,6 +615,7 @@ PVR_ERROR GetRecordingEdl(const PVR_RECORDING&, PVR_EDL_ENTRY[], int*) { return 
 PVR_ERROR UpdateTimer(const PVR_TIMER &timer) { return PVR_ERROR_NOT_IMPLEMENTED; }
 void DemuxAbort(void) {}
 DemuxPacket* DemuxRead(void) { return NULL; }
+void FillBuffer(bool mode) {}
 void PauseStream(bool bPaused) {}
 bool SeekTime(double,bool,double*) { return false; }
 void SetSpeed(int) {}
