@@ -872,9 +872,9 @@ PVR_ERROR PVRIptvData::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHA
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
+PVR_ERROR PVRIptvData::GetEPGForChannel(ADDON_HANDLE handle, int iChannelUid, time_t iStart, time_t iEnd)
 {
-  XBMC->Log(LOG_DEBUG, "%s %s, from=%s to=%s", __FUNCTION__, channel.strChannelName, ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(iEnd).c_str());
+  XBMC->Log(LOG_DEBUG, "%s %i, from=%s to=%s", __FUNCTION__, iChannelUid, ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(iEnd).c_str());
   std::lock_guard<std::mutex> critical(m_mutex);
   // Note: For future scheduled timers Kodi requests EPG (this function) with
   // iStart & iEnd as given by the timer timespan. But we don't want to narrow
