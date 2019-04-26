@@ -108,7 +108,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
 
   SetEPGTimeFrame(m_epgMaxDays);
 
-  CreateThread();
+  m_thread = std::thread{[this] { Process(); }};
 }
 
 bool PVRIptvData::LoadRecordingsJob()
@@ -275,7 +275,7 @@ void PVRIptvData::LoginLoop()
       else
         login_delay = 30; // try in 30 seconds
     }
-    Sleep(1000);
+    std::this_thread::sleep_for(std::chrono::seconds{1});
   }
 }
 
@@ -285,7 +285,7 @@ bool PVRIptvData::WaitForChannels() const
   return m_waitCond.wait_for(critical, std::chrono::seconds{5}, [this] { return m_bChannelsLoaded; });
 }
 
-void *PVRIptvData::Process(void)
+void PVRIptvData::Process(void)
 {
   XBMC->Log(LOG_DEBUG, "keepAlive:: thread started");
 
@@ -304,7 +304,7 @@ void *PVRIptvData::Process(void)
   while (KeepAlive())
   {
     if (!work_done)
-      Sleep(1000);
+      std::this_thread::sleep_for(std::chrono::seconds{1});
 
     work_done = false;
 
@@ -329,7 +329,6 @@ void *PVRIptvData::Process(void)
     work_done |= keep_alive_job.Call();
   }
   XBMC->Log(LOG_DEBUG, "keepAlive:: thread stopped");
-  return NULL;
 }
 
 PVRIptvData::~PVRIptvData(void)
@@ -338,10 +337,7 @@ PVRIptvData::~PVRIptvData(void)
     std::lock_guard<std::mutex> critical(m_mutex);
     m_bKeepAlive = false;
   }
-  if (IsRunning())
-  {
-    StopThread(0);
-  }
+  m_thread.join();
   XBMC->Log(LOG_DEBUG, "%s destructed", __FUNCTION__);
 }
 

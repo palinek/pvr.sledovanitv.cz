@@ -25,11 +25,12 @@
  *
  */
 
-#include "kodi/libXBMC_addon.h"
-#include "kodi/libXBMC_pvr.h"
+#include "libXBMC_addon.h"
+#include "libXBMC_pvr.h"
+#include <memory>
 
-extern ADDON::CHelper_libXBMC_addon *XBMC;
-extern CHelper_libXBMC_pvr          *PVR;
+extern std::unique_ptr<ADDON::CHelper_libXBMC_addon> XBMC;
+extern std::unique_ptr<CHelper_libXBMC_pvr> PVR;
 
 extern std::string PathCombine(const std::string &strPath, const std::string &strFileName);
 extern std::string GetClientFilePath(const std::string &strFileName);

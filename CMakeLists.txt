@@ -7,15 +7,12 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR})
 enable_language(CXX)
 
 find_package(Kodi REQUIRED)
-find_package(p8-platform REQUIRED)
 find_package(JsonCpp REQUIRED)
 
-include_directories(${p8-platform_INCLUDE_DIRS}
-                    ${KODI_INCLUDE_DIR}
+include_directories(${KODI_INCLUDE_DIR}
                     ${JSONCPP_INCLUDE_DIRS})
 
-set(DEPLIBS ${p8-platform_LIBRARIES}
-            ${JSONCPP_LIBRARIES})
+set(DEPLIBS ${JSONCPP_LIBRARIES})
 
 
 set(SLEDOVANITV_SOURCES src/client.cpp
