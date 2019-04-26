@@ -27,7 +27,7 @@
 
 #include <vector>
 #include "client.h"
-#include "p8-platform/threads/threads.h"
+#include <thread>
 #include "apimanager.h"
 #include <mutex>
 #include <memory>
@@ -144,7 +144,7 @@ struct PVRIptvConfiguration
   bool showLockedChannels; //!< flag, if unavailable/locked channels should be presented
 };
 
-class PVRIptvData : public P8PLATFORM::CThread
+class PVRIptvData
 {
 public:
   PVRIptvData(PVRIptvConfiguration cfg);
@@ -196,7 +196,7 @@ protected:
   std::string ChannelStreamType(const std::string & channelId) const;
 
 protected:
-  virtual void *Process(void) override;
+  void Process(void);
 
 private:
   bool                              m_bKeepAlive;
@@ -204,6 +204,7 @@ private:
   mutable std::mutex                m_mutex;
   bool                              m_bChannelsLoaded;
   mutable std::condition_variable   m_waitCond;
+  std::thread                       m_thread;
 
   // stored data from backend (used by multiple threads...)
   std::shared_ptr<const group_container_t> m_groups;

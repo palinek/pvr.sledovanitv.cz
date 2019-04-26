@@ -26,12 +26,10 @@
 
 #include "client.h"
 
-#include "p8-platform/util/util.h"
 #include "PVRIptvData.h"
-#include "kodi/xbmc_pvr_dll.h"
+#include "xbmc_pvr_dll.h"
 
 #include <iostream>
-#include <memory>
 #include <atomic>
 
 using namespace ADDON;
@@ -58,8 +56,8 @@ static std::string g_strUserPath   = "";
 static std::string g_strClientPath = "";
 static int g_iEpgMaxDays = 0;
 
-CHelper_libXBMC_addon *XBMC = NULL;
-CHelper_libXBMC_pvr   *PVR  = NULL;
+std::unique_ptr<CHelper_libXBMC_addon> XBMC;
+std::unique_ptr<CHelper_libXBMC_pvr> PVR;
 
 std::string PathCombine(const std::string &strPath, const std::string &strFileName)
 {
@@ -176,18 +174,18 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 
   PVR_PROPERTIES* pvrprops = (PVR_PROPERTIES*)props;
 
-  XBMC = new CHelper_libXBMC_addon;
+  XBMC.reset(new CHelper_libXBMC_addon);
   if (!XBMC->RegisterMe(hdl))
   {
-    SAFE_DELETE(XBMC);
+    XBMC.reset(nullptr);
     return ADDON_STATUS_PERMANENT_FAILURE;
   }
 
-  PVR = new CHelper_libXBMC_pvr;
+  PVR.reset(new CHelper_libXBMC_pvr);
   if (!PVR->RegisterMe(hdl))
   {
-    SAFE_DELETE(PVR);
-    SAFE_DELETE(XBMC);
+    PVR.reset(nullptr);
+    XBMC.reset(nullptr);
     return ADDON_STATUS_PERMANENT_FAILURE;
   }
 
