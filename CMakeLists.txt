@@ -32,5 +32,7 @@ if(WIN32)
 endif()
 
 build_addon(pvr.sledovanitv.cz SLEDOVANITV DEPLIBS)
+set_property(TARGET pvr.sledovanitv.cz PROPERTY CXX_STANDARD 11)
+set_property(TARGET pvr.sledovanitv.cz PROPERTY CXX_STANDARD_REQUIRED ON)
 
 include(CPack)
