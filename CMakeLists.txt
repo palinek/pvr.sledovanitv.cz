@@ -11,6 +11,11 @@ find_package(JsonCpp REQUIRED)
 
 include_directories(${KODI_INCLUDE_DIR}
                     ${JSONCPP_INCLUDE_DIRS})
+# workaround for windows & unneeded including of p8-platform/windows/dlfcn-win32.h from libXBMC_addon.h
+if(WIN32)
+  find_package(p8-platform REQUIRED)
+  include_directories(${p8-platform_INCLUDE_DIRS})
+endif()
 
 set(DEPLIBS ${JSONCPP_LIBRARIES})
 
