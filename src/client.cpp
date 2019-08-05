@@ -100,6 +100,11 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
     cfg.password = buffer;
   }
 
+  if (XBMC->GetSetting("deviceId", &buffer))
+  {
+    cfg.deviceId = buffer;
+  }
+
   if (!XBMC->GetSetting("streamQuality", &cfg.streamQuality))
   {
     cfg.streamQuality = 0;

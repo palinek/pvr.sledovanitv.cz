@@ -30,6 +30,10 @@ msgctxt "#30001"
 msgid "Password"
 msgstr "Heslo"
 
+msgctxt "#30008"
+msgid "Device ID (empty - use MAC address)"
+msgstr "ID zařízení (prázdné - použít MAC adresu)"
+
 msgctxt "#30002"
 msgid "Stream quality"
 msgstr "Kvalita streamu"

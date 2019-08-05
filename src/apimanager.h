@@ -51,7 +51,9 @@ public:
   static std::string formatTime(time_t t);
 
 public:
-  ApiManager(const std::string & userName, const std::string & userPassword);
+  ApiManager(const std::string & userName
+      , const std::string & userPassword
+      , const std::string & overridenMac);
 
   bool pairDevice();
   bool login();
@@ -85,6 +87,7 @@ private:
   static const std::string PAIR_FILE;
   const std::string m_userName;
   const std::string m_userPassword;
+  const std::string m_overridenMac;
   std::string m_deviceId;
   std::string m_password;
   std::shared_ptr<const std::string> m_sessionId;

@@ -103,7 +103,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_useH265{cfg.useH265}
   , m_useAdaptive{cfg.useAdaptive}
   , m_showLockedChannels{cfg.showLockedChannels}
-  , m_manager{std::move(cfg.userName), std::move(cfg.password)}
+  , m_manager{std::move(cfg.userName), std::move(cfg.password), std::move(cfg.deviceId)}
 {
 
   SetEPGTimeFrame(m_epgMaxDays);
