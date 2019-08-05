@@ -30,6 +30,10 @@ msgctxt "#30001"
 msgid "Password"
 msgstr "Password"
 
+msgctxt "#30008"
+msgid "Device ID (empty - use MAC address)"
+msgstr "Device ID (empty - use MAC address)"
+
 msgctxt "#30002"
 msgid "Stream quality"
 msgstr "Stream quality"

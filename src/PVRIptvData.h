@@ -133,6 +133,7 @@ struct PVRIptvConfiguration
 {
   std::string userName;
   std::string password;
+  std::string deviceId; //!< device identifier (value for overriding the MAC address detection)
   int streamQuality;
   int epgMaxDays;
   unsigned fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh

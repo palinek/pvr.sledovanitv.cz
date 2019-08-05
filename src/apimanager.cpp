@@ -181,9 +181,12 @@ std::string ApiManager::formatTime(time_t t)
   return buf;
 }
 
-ApiManager::ApiManager(const std::string & userName, const std::string & userPassword)
+ApiManager::ApiManager(const std::string & userName
+    , const std::string & userPassword
+    , const std::string & overridenMac)
   : m_userName{userName}
   , m_userPassword{userPassword}
+  , m_overridenMac{overridenMac}
   , m_sessionId{std::make_shared<std::string>()}
 {
   XBMC->Log(LOG_NOTICE, "Loading ApiManager");
@@ -264,7 +267,7 @@ bool ApiManager::pairDevice()
     char hostName[256];
     gethostname(hostName, 256);
 
-    std::string macAddr = get_mac_address();
+    std::string macAddr = m_overridenMac.empty() ? get_mac_address() : m_overridenMac;
     if (macAddr.empty())
     {
       XBMC->Log(LOG_NOTICE, "Unable to get MAC address, using a dummy for serial");
