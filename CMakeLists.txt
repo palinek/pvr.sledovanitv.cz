@@ -6,7 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR})
 find_package(Kodi REQUIRED)
 find_package(JsonCpp REQUIRED)
 
-include_directories(${KODI_INCLUDE_DIR}
+include_directories(${KODI_INCLUDE_DIR}/.. # Hack way with "/..", need bigger Kodi cmake rework to match right include ways
                     ${JSONCPP_INCLUDE_DIRS})
 # workaround for windows & unneeded including of p8-platform/windows/dlfcn-win32.h from libXBMC_addon.h
 if(WIN32)

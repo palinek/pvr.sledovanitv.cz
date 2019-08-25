@@ -27,7 +27,7 @@
 #include "client.h"
 
 #include "PVRIptvData.h"
-#include "xbmc_pvr_dll.h"
+#include "kodi/xbmc_pvr_dll.h"
 
 #include <iostream>
 #include <atomic>
