@@ -1,15 +1,12 @@
+cmake_minimum_required(VERSION 3.5)
 project(pvr.sledovanitv.cz)
 
-cmake_minimum_required(VERSION 2.6)
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR})
-
-enable_language(CXX)
 
 find_package(Kodi REQUIRED)
 find_package(JsonCpp REQUIRED)
 
-include_directories(${KODI_INCLUDE_DIR}
+include_directories(${KODI_INCLUDE_DIR}/.. # Hack way with "/..", need bigger Kodi cmake rework to match right include ways
                     ${JSONCPP_INCLUDE_DIRS})
 
 set(DEPLIBS ${JSONCPP_LIBRARIES})

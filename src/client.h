@@ -25,8 +25,8 @@
  *
  */
 
-#include "libXBMC_addon.h"
-#include "libXBMC_pvr.h"
+#include "kodi/libXBMC_addon.h"
+#include "kodi/libXBMC_pvr.h"
 #include <memory>
 
 extern std::unique_ptr<ADDON::CHelper_libXBMC_addon> XBMC;
