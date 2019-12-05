@@ -58,6 +58,10 @@ msgctxt "#30007"
 msgid "Show unavailable channels"
 msgstr "Zobrazovať nedostupné kanály"
 
+msgctxt "#30009"
+msgid "Show only PIN locked channels"
+msgstr "Zobrazovať len kanály blokované PIN"
+
 msgctxt "#30100"
 msgid "Refresh times"
 msgstr "Časy aktualizácie"
@@ -81,3 +85,7 @@ msgstr "Interval overovania EPG"
 msgctxt "#30201"
 msgid "unavailable"
 msgstr "nedostupné"
+
+msgctxt "#30202"
+msgid "Enter PIN for unlock"
+msgstr "Zadajte PIN pre odmknutie"

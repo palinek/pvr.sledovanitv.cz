@@ -58,6 +58,10 @@ msgctxt "#30007"
 msgid "Show unavailable channels"
 msgstr "Show unavailable channels"
 
+msgctxt "#30009"
+msgid "Show only PIN locked channels"
+msgstr "Show only PIN locked channels"
+
 msgctxt "#30100"
 msgid "Refresh times"
 msgstr "Refresh times"
@@ -81,3 +85,7 @@ msgstr "Interval of EPG checks"
 msgctxt "#30201"
 msgid "unavailable"
 msgstr "unavailable"
+
+msgctxt "#30202"
+msgid "Enter PIN for unlock"
+msgstr "Enter PIN for unlock"

@@ -57,6 +57,7 @@ public:
 
   bool pairDevice();
   bool login();
+  bool pinUnlock(const std::string & pin);
   bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root);
   bool getStreamQualities(Json::Value & root);
   bool getEpg(time_t start, bool smallDuration, const std::string & channels, Json::Value & root);
@@ -70,6 +71,7 @@ public:
   bool deleteRecord(const std::string &recId);
   bool keepAlive();
   bool loggedIn() const;
+  bool pinUnlocked() const;
 
 private:
   static std::string urlEncode(const std::string &str);
@@ -90,6 +92,7 @@ private:
   const std::string m_overridenMac;
   std::string m_deviceId;
   std::string m_password;
+  bool m_pinUnlocked;
   std::shared_ptr<const std::string> m_sessionId;
 };
 

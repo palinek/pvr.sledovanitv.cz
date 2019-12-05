@@ -73,6 +73,7 @@ struct PVRIptvChannel
   std::string strId;
   std::string strGroupId;
   std::string strStreamType;
+  bool        bIsPinLocked;
 };
 
 struct PVRIptvChannelGroup
@@ -98,6 +99,7 @@ struct PVRIptvRecording
   int iLifeTime;
   std::string strStreamType;
   int iChannelUid;
+  bool bIsPinLocked;
 };
 
 struct PVRIptvTimer
@@ -143,6 +145,7 @@ struct PVRIptvConfiguration
   bool useH265; //!< flag, if h265 codec should be requested
   bool useAdaptive; //!< flag, if inpustream.adaptive (aka adaptive bitrate streaming) should be used/requested
   bool showLockedChannels; //!< flag, if unavailable/locked channels should be presented
+  bool showLockedOnlyPin; //!< flag, if PIN-locked only channels should be presented
 };
 
 class PVRIptvData
@@ -153,18 +156,18 @@ public:
 
   int GetChannelsAmount(void);
   PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
-  PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType) const;
-  PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
+  PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType);
+  PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, int iChannelUid, time_t iStart, time_t iEnd);
   PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const;
   PVR_ERROR IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const;
-  PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType) const;
+  PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType);
   PVR_ERROR SetEPGTimeFrame(int iDays);
   int GetChannelGroupsAmount(void);
   PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio);
   PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
   int GetRecordingsAmount();
   PVR_ERROR GetRecordings(ADDON_HANDLE handle);
-  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType) const;
+  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType);
   void GetRecordingsUrls();
   int GetTimersAmount();
   PVR_ERROR GetTimers(ADDON_HANDLE handle);
@@ -195,6 +198,7 @@ protected:
   bool RecordingExists(const std::string & recordId) const;
   std::string ChannelsList() const;
   std::string ChannelStreamType(const std::string & channelId) const;
+  bool PinCheckUnlock(bool isPinLocked);
 
 protected:
   void Process(void);
@@ -231,6 +235,7 @@ private:
   bool m_useH265;
   bool m_useAdaptive;
   bool m_showLockedChannels;
+  bool m_showLockedOnlyPin;
 
   ApiManager                        m_manager;
 };

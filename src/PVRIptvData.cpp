@@ -103,6 +103,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   , m_useH265{cfg.useH265}
   , m_useAdaptive{cfg.useAdaptive}
   , m_showLockedChannels{cfg.showLockedChannels}
+  , m_showLockedOnlyPin{cfg.showLockedOnlyPin}
   , m_manager{std::move(cfg.userName), std::move(cfg.password), std::move(cfg.deviceId)}
 {
 
@@ -545,6 +546,7 @@ bool PVRIptvData::LoadRecordings()
       iptvrecording.bRadio = channel_i->bIsRadio;
       iptvrecording.iLifeTime = (ParseDateTime(record.get("expires", "").asString() + "00:00") - now) / 86400;
       iptvrecording.strDirectory = std::move(directory);
+      iptvrecording.bIsPinLocked = locked == "pin";
 
       XBMC->Log(LOG_DEBUG, "Loading recording '%s'", iptvrecording.strTitle.c_str());
 
@@ -584,7 +586,7 @@ bool PVRIptvData::LoadRecordings()
   {
     const auto & old_rec = (*recordings)[i];
     const auto & new_rec = (*new_recordings)[i];
-    if (new_rec.strRecordId != old_rec.strRecordId)
+    if (new_rec.strRecordId != old_rec.strRecordId || new_rec.strStreamUrl != old_rec.strStreamUrl)
     {
       changed_r = true;
       break;
@@ -655,10 +657,10 @@ bool PVRIptvData::LoadPlayList(void)
   for (unsigned int i = 0; i < channels.size(); i++)
   {
     Json::Value channel = channels[i];
-    if (!m_showLockedChannels)
+    const std::string locked = channel.get("locked", "none").asString();
+    if (locked != "none")
     {
-      const std::string locked = channel.get("locked", "none").asString();
-      if (locked != "none")
+      if (!m_showLockedChannels || (m_showLockedOnlyPin && locked != "pin"))
       {
         XBMC->Log(LOG_INFO, "Skipping locked(%s) channel %s", locked.c_str(), channel.get("name", "").asString().c_str());
         continue;
@@ -677,6 +679,7 @@ bool PVRIptvData::LoadPlayList(void)
     iptvchan.iChannelNumber = i + 1;
     iptvchan.strIconPath = channel.get("logoUrl", "").asString();
     iptvchan.bIsRadio = channel.get("type", "").asString() != "tv";
+    iptvchan.bIsPinLocked = locked == "pin";
 
     new_channels->push_back(iptvchan);
   }
@@ -764,7 +767,7 @@ PVR_ERROR PVRIptvData::GetChannels(ADDON_HANDLE handle, bool bRadio)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType) const
+PVR_ERROR PVRIptvData::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType)
 {
   decltype (m_channels) channels;
   {
@@ -778,6 +781,9 @@ PVR_ERROR PVRIptvData::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::stri
     XBMC->Log(LOG_NOTICE, "%s can't find channel %d", __FUNCTION__, channel->iUniqueId);
     return PVR_ERROR_INVALID_PARAMETERS;
   }
+
+  if (!PinCheckUnlock(channel_i->bIsPinLocked))
+    return PVR_ERROR_REJECTED;
 
   streamUrl = channel_i->strStreamURL;
   streamType = channel_i->strStreamType;
@@ -884,6 +890,7 @@ static PVR_ERROR GetEPGData(const EPG_TAG* tag
     , const channel_container_t * channels
     , const epg_container_t * epg
     , epg_entry_container_t::const_iterator & epg_i
+    , bool * isChannelPinLocked = nullptr
     )
 {
   auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [tag] (const PVRIptvChannel & c) { return c.iChannelNumber == tag->iUniqueChannelId; });
@@ -892,12 +899,14 @@ static PVR_ERROR GetEPGData(const EPG_TAG* tag
     XBMC->Log(LOG_NOTICE, "%s can't find channel %d", __FUNCTION__, tag->iUniqueChannelId);
     return PVR_ERROR_INVALID_PARAMETERS;
   }
+  if (isChannelPinLocked)
+    *isChannelPinLocked = channel_i->bIsPinLocked;
 
   auto ch_epg_i = epg->find(channel_i->strId);
 
   if (epg->cend() == ch_epg_i || (epg_i = ch_epg_i->second.epg.find(tag->iUniqueBroadcastId)) == ch_epg_i->second.epg.cend())
   {
-    XBMC->Log(LOG_NOTICE, "%s can't EPG data for find channel %s, time %d", __FUNCTION__, channel_i->strId.c_str(), tag->iUniqueBroadcastId);
+    XBMC->Log(LOG_NOTICE, "%s can't find EPG data for channel %s, time %d", __FUNCTION__, channel_i->strId.c_str(), tag->iUniqueBroadcastId);
     return PVR_ERROR_INVALID_PARAMETERS;
   }
   return PVR_ERROR_NO_ERROR;
@@ -941,7 +950,7 @@ PVR_ERROR PVRIptvData::IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordabl
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType) const
+PVR_ERROR PVRIptvData::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -951,10 +960,14 @@ PVR_ERROR PVRIptvData::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamU
     epg = m_epg;
   }
 
+  bool isPinLocked;
   epg_entry_container_t::const_iterator epg_i;
-  PVR_ERROR ret = GetEPGData(tag, channels.get(), epg.get(), epg_i);
+  PVR_ERROR ret = GetEPGData(tag, channels.get(), epg.get(), epg_i, &isPinLocked);
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
+
+  if (!PinCheckUnlock(isPinLocked))
+    return PVR_ERROR_REJECTED;
 
   if (RecordingExists(epg_i->second.strRecordId))
     return GetRecordingStreamUrl(epg_i->second.strRecordId, streamUrl, streamType);
@@ -1045,7 +1058,7 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType) const
+PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType)
 {
   decltype (m_recordings) recordings;
   {
@@ -1055,6 +1068,9 @@ PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const std::string & recording, std:
   auto rec_i = std::find_if(recordings->cbegin(), recordings->cend(), [recording] (const PVRIptvRecording & r) { return recording == r.strRecordId; });
   if (recordings->cend() == rec_i)
     return PVR_ERROR_INVALID_PARAMETERS;
+
+  if (!PinCheckUnlock(rec_i->bIsPinLocked))
+    return PVR_ERROR_REJECTED;
 
   streamUrl = rec_i->strStreamUrl;
   streamType = rec_i->strStreamType;
@@ -1248,4 +1264,33 @@ std::string PVRIptvData::ChannelStreamType(const std::string & channelId) const
   else
     stream_type = channel_i->strStreamType;
   return stream_type;
+}
+
+bool PVRIptvData::PinCheckUnlock(bool isPinLocked)
+{
+  if (!isPinLocked)
+    return true;
+
+  if (!m_manager.pinUnlocked())
+  {
+    //Note: std::make_unique is available from c++14
+    std::unique_ptr<char, decltype (&xbmcStrFree)> loc{XBMC->GetLocalizedString(30202), &xbmcStrFree};
+    char pin[32];
+    pin[0] = 0;
+    if (GUI->Dialog_Numeric_ShowAndGetNumber(*pin, sizeof (pin), loc.get()))
+    {
+      if (!m_manager.pinUnlock(pin))
+      {
+        XBMC->Log(LOG_ERROR, "PIN-unlocking failed");
+        return false;
+      }
+    } else
+    {
+      XBMC->Log(LOG_ERROR, "PIN-entering cancelled");
+      return false;
+    }
+  }
+  // unlocking can lead to unlock of recordings
+  SetLoadRecordings();
+  return true;
 }

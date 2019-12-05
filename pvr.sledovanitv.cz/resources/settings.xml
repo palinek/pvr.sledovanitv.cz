@@ -56,6 +56,14 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
+        <setting id="showLockedOnlyPin" type="boolean" label="30009">
+          <level>1</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="enable" setting="showLockedChannels">true</dependency>
+          </dependencies>
+          <control type="toggle" />
+        </setting>
       </group>
     </category>
 
