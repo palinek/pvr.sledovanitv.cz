@@ -499,11 +499,12 @@ std::string ApiManager::buildQueryString(const ApiParamMap & paramMap, bool putS
     strOut += param.first + "=" + urlEncode(param.second);
   }
 
-  std::shared_ptr<const std::string> session_id = std::atomic_load(&m_sessionId);
-
   if (putSessionVar)
+  {
+    auto session_id = std::atomic_load(&m_sessionId);
     strOut += "&PHPSESSID=";
-  strOut += *session_id;
+    strOut += *session_id;
+  }
 
   return strOut;
 }
