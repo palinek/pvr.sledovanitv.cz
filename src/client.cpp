@@ -58,6 +58,7 @@ static int g_iEpgMaxDays = 0;
 
 std::unique_ptr<CHelper_libXBMC_addon> XBMC;
 std::unique_ptr<CHelper_libXBMC_pvr> PVR;
+std::unique_ptr<CHelper_libKODI_guilib> GUI;
 
 std::string PathCombine(const std::string &strPath, const std::string &strFileName)
 {
@@ -148,6 +149,11 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
   {
     cfg.showLockedChannels = true;
   }
+
+  if (!XBMC->GetSetting("showLockedOnlyPin", &cfg.showLockedOnlyPin))
+  {
+    cfg.showLockedOnlyPin = true;
+  }
 }
 
 static PVR_ERROR FillStreamProperties(const properties_t & props, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
@@ -191,6 +197,13 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   {
     PVR.reset(nullptr);
     XBMC.reset(nullptr);
+    return ADDON_STATUS_PERMANENT_FAILURE;
+  }
+
+  GUI.reset(new CHelper_libKODI_guilib);
+  if (!GUI->RegisterMe(hdl))
+  {
+    GUI.reset(nullptr);
     return ADDON_STATUS_PERMANENT_FAILURE;
   }
 
