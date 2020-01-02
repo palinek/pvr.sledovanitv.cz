@@ -775,7 +775,7 @@ PVR_ERROR PVRIptvData::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::stri
     channels = m_channels;
   }
 
-  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [channel] (const PVRIptvChannel & c) { return c.iChannelNumber == channel->iUniqueId; });
+  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [channel] (const PVRIptvChannel & c) { return c.iUniqueId == channel->iUniqueId; });
   if (channels->cend() == channel_i)
   {
     XBMC->Log(LOG_NOTICE, "%s can't find channel %d", __FUNCTION__, channel->iUniqueId);
@@ -850,6 +850,7 @@ PVR_ERROR PVRIptvData::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHA
   auto group_i = std::find_if(groups->cbegin(), groups->cend(), [&group] (PVRIptvChannelGroup const & g) { return g.strGroupName == group.strGroupName; });
   if (group_i != groups->cend())
   {
+    int order = 0;
     for (const auto & member : group_i->members)
     {
       if (member < 0 || member >= channels->size())
@@ -861,7 +862,7 @@ PVR_ERROR PVRIptvData::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHA
 
       strncpy(xbmcGroupMember.strGroupName, group.strGroupName, sizeof(xbmcGroupMember.strGroupName) - 1);
       xbmcGroupMember.iChannelUniqueId = channel.iUniqueId;
-      xbmcGroupMember.iChannelNumber   = channel.iChannelNumber;
+      xbmcGroupMember.iChannelNumber   = ++order;
 
       xbmc_group_members.push_back(std::move(xbmcGroupMember));
     }
@@ -893,7 +894,7 @@ static PVR_ERROR GetEPGData(const EPG_TAG* tag
     , bool * isChannelPinLocked = nullptr
     )
 {
-  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [tag] (const PVRIptvChannel & c) { return c.iChannelNumber == tag->iUniqueChannelId; });
+  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [tag] (const PVRIptvChannel & c) { return c.iUniqueId == tag->iUniqueChannelId; });
   if (channels->cend() == channel_i)
   {
     XBMC->Log(LOG_NOTICE, "%s can't find channel %d", __FUNCTION__, tag->iUniqueChannelId);
