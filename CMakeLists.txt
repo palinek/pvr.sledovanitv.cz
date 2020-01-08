@@ -18,13 +18,13 @@ set(DEPLIBS ${JSONCPP_LIBRARIES})
 
 
 set(SLEDOVANITV_SOURCES src/client.cpp
-  src/apimanager.cpp
-  src/PVRIptvData.cpp)
+  src/ApiManager.cpp
+  src/Data.cpp)
 
 set(SLEDOVANITV_HEADERS src/client.h
-  src/apimanager.h
+  src/ApiManager.h
   src/CallLimiter.hh
-  src/PVRIptvData.h)
+  src/Data.h)
 
 if(WIN32)
   add_definitions("/wd4996")
