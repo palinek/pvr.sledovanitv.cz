@@ -26,7 +26,7 @@
 
 #include "client.h"
 
-#include "PVRIptvData.h"
+#include "Data.h"
 #include "kodi/xbmc_pvr_dll.h"
 
 #include <iostream>
@@ -46,7 +46,7 @@ using namespace ADDON;
 
 
 ADDON_STATUS   m_CurStatus      = ADDON_STATUS_UNKNOWN;
-static std::shared_ptr<PVRIptvData> m_data;
+static std::shared_ptr<sledovanitvcz::Data> m_data;
 
 /* User adjustable settings are saved here.
  * Default values are defined inside client.h
@@ -87,7 +87,7 @@ std::string GetUserFilePath(const std::string &strFileName)
   return PathCombine(g_strUserPath, strFileName);
 }
 
-static void ReadSettings(PVRIptvConfiguration & cfg)
+static void ReadSettings(sledovanitvcz::Configuration & cfg)
 {
   char buffer[1024];
 
@@ -156,7 +156,7 @@ static void ReadSettings(PVRIptvConfiguration & cfg)
   }
 }
 
-static PVR_ERROR FillStreamProperties(const properties_t & props, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
+static PVR_ERROR FillStreamProperties(const sledovanitvcz::properties_t & props, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
   if (*iPropertiesCount < props.size())
     return PVR_ERROR_INVALID_PARAMETERS;
@@ -218,12 +218,12 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
     XBMC->CreateDirectory(g_strUserPath.c_str());
   }
 
-  PVRIptvConfiguration cfg;
+  sledovanitvcz::Configuration cfg;
   ReadSettings(cfg);
   cfg.epgMaxDays = pvrprops->iEpgMaxDays;
 
-  std::atomic_store(&m_data, std::shared_ptr<PVRIptvData>{nullptr}); // be sure that the previous one is deleted before new is constructed
-  std::atomic_store(&m_data, std::make_shared<PVRIptvData>(std::move(cfg)));
+  std::atomic_store(&m_data, std::shared_ptr<sledovanitvcz::Data>{nullptr}); // be sure that the previous one is deleted before new is constructed
+  std::atomic_store(&m_data, std::make_shared<sledovanitvcz::Data>(std::move(cfg)));
   m_CurStatus = ADDON_STATUS_OK;
 
   return m_CurStatus;
@@ -236,7 +236,7 @@ ADDON_STATUS ADDON_GetStatus()
 
 void ADDON_Destroy()
 {
-  std::atomic_store(&m_data, std::shared_ptr<PVRIptvData>{nullptr});
+  std::atomic_store(&m_data, std::shared_ptr<sledovanitvcz::Data>{nullptr});
   m_CurStatus = ADDON_STATUS_UNKNOWN;
 }
 

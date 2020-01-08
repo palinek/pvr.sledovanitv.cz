@@ -34,8 +34,7 @@
 #include <algorithm>
 #include <functional>
 
-#include "PVRIptvData.h"
-#include "apimanager.h"
+#include "Data.h"
 #include "CallLimiter.hh"
 
 #if defined(TARGET_WINDOWS)
@@ -45,8 +44,9 @@
 # define LOCALTIME_R(src, dst) localtime_r(src, dst)
 # define GMTIME_R(src, dst) gmtime_r(src, dst)
 #endif
-using namespace std;
-using namespace ADDON;
+
+namespace sledovanitvcz
+{
 
 template <int N> void strAssign(char (&dst)[N], const std::string & src)
 {
@@ -78,7 +78,7 @@ static unsigned DiffBetweenPragueAndLocalTime(const time_t * when = nullptr)
   return tloc - t2 - (isdst > 0 ? 7200 : 3600);
 }
 
-PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
+Data::Data(Configuration cfg)
   : m_bKeepAlive{true}
   , m_bLoadRecordings{true}
   , m_bChannelsLoaded{false}
@@ -112,7 +112,7 @@ PVRIptvData::PVRIptvData(PVRIptvConfiguration cfg)
   m_thread = std::thread{[this] { Process(); }};
 }
 
-bool PVRIptvData::LoadRecordingsJob()
+bool Data::LoadRecordingsJob()
 {
   if (!KeepAlive())
     return false;
@@ -133,15 +133,15 @@ bool PVRIptvData::LoadRecordingsJob()
   return load;
 }
 
-void PVRIptvData::SetLoadRecordings()
+void Data::SetLoadRecordings()
 {
   std::lock_guard<std::mutex> critical(m_mutex);
   m_bLoadRecordings = true;
 }
 
-void PVRIptvData::TriggerFullRefresh()
+void Data::TriggerFullRefresh()
 {
-  XBMC->Log(LOG_INFO, "%s triggering channels/EGP full refresh", __FUNCTION__);
+  XBMC->Log(ADDON::LOG_INFO, "%s triggering channels/EGP full refresh", __FUNCTION__);
   m_iLastEnd = 0;
   m_iLastStart = 0;
 
@@ -154,9 +154,9 @@ void PVRIptvData::TriggerFullRefresh()
   LoadPlayList();
 }
 
-bool PVRIptvData::LoadEPGJob()
+bool Data::LoadEPGJob()
 {
-  XBMC->Log(LOG_INFO, "%s will check if EGP loading needed", __FUNCTION__);
+  XBMC->Log(ADDON::LOG_INFO, "%s will check if EGP loading needed", __FUNCTION__);
   time_t min_epg, max_epg;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
@@ -187,7 +187,7 @@ bool PVRIptvData::LoadEPGJob()
   return updated;
 }
 
-void PVRIptvData::ReleaseUnneededEPG()
+void Data::ReleaseUnneededEPG()
 {
   decltype (m_epg) epg;
   time_t min_epg, max_epg;
@@ -198,7 +198,7 @@ void PVRIptvData::ReleaseUnneededEPG()
     epg = m_epg;
   }
   auto epg_copy = std::make_shared<epg_container_t>();
-  XBMC->Log(LOG_DEBUG, "%s min_epg=%s max_epg=%s", __FUNCTION__, ApiManager::formatTime(min_epg).c_str(), ApiManager::formatTime(max_epg).c_str());
+  XBMC->Log(ADDON::LOG_DEBUG, "%s min_epg=%s max_epg=%s", __FUNCTION__, ApiManager::formatTime(min_epg).c_str(), ApiManager::formatTime(max_epg).c_str());
 
   for (const auto & epg_channel : *epg)
   {
@@ -206,10 +206,10 @@ void PVRIptvData::ReleaseUnneededEPG()
     std::vector<time_t> to_delete;
     for (auto entry_i = epg_data.cbegin(); entry_i != epg_data.cend(); ++entry_i)
     {
-      const PVRIptvEpgEntry & entry = entry_i->second;
+      const EpgEntry & entry = entry_i->second;
       if (entry_i->second.startTime > max_epg || entry_i->second.endTime < min_epg)
       {
-        XBMC->Log(LOG_DEBUG, "Removing TV show: %s - %s, start=%s end=%s", epg_channel.second.strName.c_str(), entry.strTitle.c_str()
+        XBMC->Log(ADDON::LOG_DEBUG, "Removing TV show: %s - %s, start=%s end=%s", epg_channel.second.strName.c_str(), entry.strTitle.c_str()
             , ApiManager::formatTime(entry.startTime).c_str(), ApiManager::formatTime(entry.endTime).c_str());
         // notify about the epg change...and delete it
         EPG_TAG tag;
@@ -252,19 +252,19 @@ void PVRIptvData::ReleaseUnneededEPG()
   m_iLastEnd = std::min(m_iLastEnd, max_epg);
 }
 
-void PVRIptvData::KeepAliveJob()
+void Data::KeepAliveJob()
 {
   if (!KeepAlive())
     return;
 
-  XBMC->Log(LOG_DEBUG, "keepAlive:: trigger");
+  XBMC->Log(ADDON::LOG_DEBUG, "keepAlive:: trigger");
   if (!m_manager.keepAlive())
   {
     LoginLoop();
   }
 }
 
-void PVRIptvData::LoginLoop()
+void Data::LoginLoop()
 {
   unsigned login_delay = 0;
   for (bool should_try = true; KeepAlive() && should_try; --login_delay)
@@ -280,15 +280,15 @@ void PVRIptvData::LoginLoop()
   }
 }
 
-bool PVRIptvData::WaitForChannels() const
+bool Data::WaitForChannels() const
 {
   std::unique_lock<std::mutex> critical(m_mutex);
   return m_waitCond.wait_for(critical, std::chrono::seconds{5}, [this] { return m_bChannelsLoaded; });
 }
 
-void PVRIptvData::Process(void)
+void Data::Process(void)
 {
-  XBMC->Log(LOG_DEBUG, "keepAlive:: thread started");
+  XBMC->Log(ADDON::LOG_DEBUG, "keepAlive:: thread started");
 
   LoginLoop();
 
@@ -296,9 +296,9 @@ void PVRIptvData::Process(void)
 
   bool epg_updated = false;
 
-  auto keep_alive_job = getCallLimiter(std::bind(&PVRIptvData::KeepAliveJob, this), std::chrono::seconds{m_keepAliveDelay}, true);
-  auto trigger_full_refresh = getCallLimiter(std::bind(&PVRIptvData::TriggerFullRefresh, this), std::chrono::seconds{m_fullChannelEpgRefresh}, true);
-  auto trigger_load_recordings = getCallLimiter(std::bind(&PVRIptvData::SetLoadRecordings, this), std::chrono::seconds{m_loadingsRefresh}, true);
+  auto keep_alive_job = getCallLimiter(std::bind(&Data::KeepAliveJob, this), std::chrono::seconds{m_keepAliveDelay}, true);
+  auto trigger_full_refresh = getCallLimiter(std::bind(&Data::TriggerFullRefresh, this), std::chrono::seconds{m_fullChannelEpgRefresh}, true);
+  auto trigger_load_recordings = getCallLimiter(std::bind(&Data::SetLoadRecordings, this), std::chrono::seconds{m_loadingsRefresh}, true);
   auto epg_dummy_trigger = getCallLimiter([] {}, std::chrono::seconds{m_epgCheckDelay}, false); // using the CallLimiter just to test if the epg should be done
 
   bool work_done = true;
@@ -329,29 +329,29 @@ void PVRIptvData::Process(void)
     // do keep alive call once a time
     work_done |= keep_alive_job.Call();
   }
-  XBMC->Log(LOG_DEBUG, "keepAlive:: thread stopped");
+  XBMC->Log(ADDON::LOG_DEBUG, "keepAlive:: thread stopped");
 }
 
-PVRIptvData::~PVRIptvData(void)
+Data::~Data(void)
 {
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     m_bKeepAlive = false;
   }
   m_thread.join();
-  XBMC->Log(LOG_DEBUG, "%s destructed", __FUNCTION__);
+  XBMC->Log(ADDON::LOG_DEBUG, "%s destructed", __FUNCTION__);
 }
 
-bool PVRIptvData::KeepAlive()
+bool Data::KeepAlive()
 {
   std::lock_guard<std::mutex> critical(m_mutex);
   return m_bKeepAlive;
 }
 
-bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
+bool Data::LoadEPG(time_t iStart, bool bSmallStep)
 {
   const int step = bSmallStep ? 3600 : 86400;
-  XBMC->Log(LOG_DEBUG, "%s last start %s, start %s, last end %s, end %s", __FUNCTION__, ApiManager::formatTime(m_iLastStart).c_str()
+  XBMC->Log(ADDON::LOG_DEBUG, "%s last start %s, start %s, last end %s, end %s", __FUNCTION__, ApiManager::formatTime(m_iLastStart).c_str()
       , ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(m_iLastEnd).c_str(), ApiManager::formatTime(iStart + step).c_str());
   if (m_bEGPLoaded && m_iLastStart != 0 && iStart >= m_iLastStart && iStart + step <= m_iLastEnd)
     return false;
@@ -360,7 +360,7 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
 
   if (!m_manager.getEpg(iStart, bSmallStep, ChannelsList(), root))
   {
-    XBMC->Log(LOG_NOTICE, "Cannot parse EPG data. EPG not loaded.");
+    XBMC->Log(ADDON::LOG_NOTICE, "Cannot parse EPG data. EPG not loaded.");
     m_bEGPLoaded = true;
     return false;
   }
@@ -392,10 +392,10 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
   {
     std::string strChId = *i;
 
-    const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&strChId] (const PVRIptvChannel & ch) { return ch.strId == strChId; });
+    const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&strChId] (const Channel & ch) { return ch.strId == strChId; });
     if (channel_i != channels->cend())
     {
-      PVRIptvEpgChannel & epgChannel = (*epg_copy)[strChId];
+      EpgChannel & epgChannel = (*epg_copy)[strChId];
       epgChannel.strId = strChId;
 
       Json::Value epgData = json_channels[strChId];
@@ -408,7 +408,7 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
         // skip unneeded EPGs
         if (start_time > max_epg || end_time < min_epg)
           continue;
-        PVRIptvEpgEntry iptventry;
+        EpgEntry iptventry;
         iptventry.iBroadcastId = start_time; // unique id for channel (even if time_t is wider, int should be enough for short period of time)
         iptventry.iGenreType = 0;
         iptventry.iGenreSubType = 0;
@@ -422,7 +422,7 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
         iptventry.availableTimeshift = availability == "timeshift" || availability == "pvr";
         iptventry.strRecordId = epgEntry["recordId"].asString();
 
-        XBMC->Log(LOG_DEBUG, "Loading TV show: %s - %s, start=%s(epoch=%llu)", strChId.c_str(), iptventry.strTitle.c_str()
+        XBMC->Log(ADDON::LOG_DEBUG, "Loading TV show: %s - %s, start=%s(epoch=%llu)", strChId.c_str(), iptventry.strTitle.c_str()
             , epgEntry.get("startTime", "").asString().c_str(), static_cast<long long unsigned>(start_time));
 
         // notify about the epg change...and store it
@@ -467,12 +467,12 @@ bool PVRIptvData::LoadEPG(time_t iStart, bool bSmallStep)
   }
 
   m_bEGPLoaded = true;
-  XBMC->Log(LOG_NOTICE, "EPG Loaded.");
+  XBMC->Log(ADDON::LOG_NOTICE, "EPG Loaded.");
 
   return true;
 }
 
-bool PVRIptvData::LoadRecordings()
+bool Data::LoadRecordings()
 {
   decltype (m_channels) channels;
   decltype (m_recordings) recordings;
@@ -493,7 +493,7 @@ bool PVRIptvData::LoadRecordings()
 
   if (!m_manager.getPvr(root))
   {
-    XBMC->Log(LOG_NOTICE, "Cannot parse recordings.");
+    XBMC->Log(ADDON::LOG_NOTICE, "Cannot parse recordings.");
     return false;
   }
 
@@ -514,12 +514,12 @@ bool PVRIptvData::LoadRecordings()
       directory = loc.get();
       directory += " - ";
       directory += locked;
-      XBMC->Log(LOG_INFO, "Timer/recording '%s' is locked(%s)", title.c_str(), locked.c_str());
+      XBMC->Log(ADDON::LOG_INFO, "Timer/recording '%s' is locked(%s)", title.c_str(), locked.c_str());
     }
     std::string str_ch_id = record.get("channel", "").asString();
-    const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&str_ch_id] (const PVRIptvChannel & ch) { return ch.strId == str_ch_id; });
-    PVRIptvRecording iptvrecording;
-    PVRIptvTimer iptvtimer;
+    const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&str_ch_id] (const Channel & ch) { return ch.strId == str_ch_id; });
+    Recording iptvrecording;
+    Timer iptvtimer;
     time_t startTime = ParseDateTime(record.get("startTime", "").asString());
     int duration = record.get("duration", 0).asInt();
     time_t now;
@@ -548,7 +548,7 @@ bool PVRIptvData::LoadRecordings()
       iptvrecording.strDirectory = std::move(directory);
       iptvrecording.bIsPinLocked = locked == "pin";
 
-      XBMC->Log(LOG_DEBUG, "Loading recording '%s'", iptvrecording.strTitle.c_str());
+      XBMC->Log(ADDON::LOG_DEBUG, "Loading recording '%s'", iptvrecording.strTitle.c_str());
 
       new_recordings->push_back(iptvrecording);
     }
@@ -574,7 +574,7 @@ bool PVRIptvData::LoadRecordings()
       iptvtimer.iLifeTime = (ParseDateTime(record.get("expires", "").asString() + "00:00") - now) / 86400;
       iptvtimer.strDirectory = std::move(directory);
 
-      XBMC->Log(LOG_DEBUG, "Loading timer '%s'", iptvtimer.strTitle.c_str());
+      XBMC->Log(ADDON::LOG_DEBUG, "Loading timer '%s'", iptvtimer.strTitle.c_str());
 
       new_timers->push_back(iptvtimer);
     }
@@ -633,7 +633,7 @@ bool PVRIptvData::LoadRecordings()
   return true;
 }
 
-bool PVRIptvData::LoadPlayList(void)
+bool Data::LoadPlayList(void)
 {
   if (!KeepAlive())
     return false;
@@ -642,13 +642,13 @@ bool PVRIptvData::LoadPlayList(void)
 
   if (!m_manager.getPlaylist(m_streamQuality, m_useH265, m_useAdaptive, root))
   {
-    XBMC->Log(LOG_NOTICE, "Cannot get/parse playlist.");
+    XBMC->Log(ADDON::LOG_NOTICE, "Cannot get/parse playlist.");
     return false;
   }
 
   /*
   std::string qualities = m_manager.getStreamQualities();
-  XBMC->Log(LOG_DEBUG, "Stream qualities: %s", qualities.c_str());
+  XBMC->Log(ADDON::LOG_DEBUG, "Stream qualities: %s", qualities.c_str());
   */
 
   //channels
@@ -662,19 +662,19 @@ bool PVRIptvData::LoadPlayList(void)
     {
       if (!m_showLockedChannels || (m_showLockedOnlyPin && locked != "pin"))
       {
-        XBMC->Log(LOG_INFO, "Skipping locked(%s) channel %s", locked.c_str(), channel.get("name", "").asString().c_str());
+        XBMC->Log(ADDON::LOG_INFO, "Skipping locked(%s) channel %s", locked.c_str(), channel.get("name", "").asString().c_str());
         continue;
       }
     }
 
-    PVRIptvChannel iptvchan;
+    Channel iptvchan;
 
     iptvchan.strId = channel.get("id", "").asString();
     iptvchan.strChannelName = channel.get("name", "").asString();
     iptvchan.strGroupId = channel.get("group", "").asString();
     iptvchan.strStreamURL = channel.get("url", "").asString();
     iptvchan.strStreamType = channel.get("streamType", "").asString();
-    XBMC->Log(LOG_DEBUG, "Channel %s, URL: %s", iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
+    XBMC->Log(ADDON::LOG_DEBUG, "Channel %s, URL: %s", iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
     iptvchan.iUniqueId = i + 1;
     iptvchan.iChannelNumber = i + 1;
     iptvchan.strIconPath = channel.get("logoUrl", "").asString();
@@ -688,7 +688,7 @@ bool PVRIptvData::LoadPlayList(void)
   Json::Value groups = root["groups"];
   for (const auto & group_id : groups.getMemberNames())
   {
-    PVRIptvChannelGroup group;
+    ChannelGroup group;
     group.bRadio = false; // currently there is no way to distinguish group types in the returned json
     group.strGroupId = group_id;
     group.strGroupName = groups[group_id].asString();
@@ -700,8 +700,8 @@ bool PVRIptvData::LoadPlayList(void)
     new_groups->push_back(std::move(group));
   }
 
-  XBMC->Log(LOG_NOTICE, "Loaded %d channels.", new_channels->size());
-  XBMC->QueueNotification(QUEUE_INFO, "%d channels loaded.", new_channels->size());
+  XBMC->Log(ADDON::LOG_NOTICE, "Loaded %d channels.", new_channels->size());
+  XBMC->QueueNotification(ADDON::QUEUE_INFO, "%d channels loaded.", new_channels->size());
 
 
   {
@@ -717,7 +717,7 @@ bool PVRIptvData::LoadPlayList(void)
   return true;
 }
 
-int PVRIptvData::GetChannelsAmount(void)
+int Data::GetChannelsAmount(void)
 {
   decltype (m_channels) channels;
   {
@@ -728,9 +728,9 @@ int PVRIptvData::GetChannelsAmount(void)
   return channels->size();
 }
 
-PVR_ERROR PVRIptvData::GetChannels(ADDON_HANDLE handle, bool bRadio)
+PVR_ERROR Data::GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
-  XBMC->Log(LOG_DEBUG, "%s %s", __FUNCTION__, bRadio ? "radio" : "tv");
+  XBMC->Log(ADDON::LOG_DEBUG, "%s %s", __FUNCTION__, bRadio ? "radio" : "tv");
   WaitForChannels();
 
   decltype (m_channels) channels;
@@ -767,7 +767,7 @@ PVR_ERROR PVRIptvData::GetChannels(ADDON_HANDLE handle, bool bRadio)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType)
+PVR_ERROR Data::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType)
 {
   decltype (m_channels) channels;
   {
@@ -775,10 +775,10 @@ PVR_ERROR PVRIptvData::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::stri
     channels = m_channels;
   }
 
-  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [channel] (const PVRIptvChannel & c) { return c.iUniqueId == channel->iUniqueId; });
+  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [channel] (const Channel & c) { return c.iUniqueId == channel->iUniqueId; });
   if (channels->cend() == channel_i)
   {
-    XBMC->Log(LOG_NOTICE, "%s can't find channel %d", __FUNCTION__, channel->iUniqueId);
+    XBMC->Log(ADDON::LOG_NOTICE, "%s can't find channel %d", __FUNCTION__, channel->iUniqueId);
     return PVR_ERROR_INVALID_PARAMETERS;
   }
 
@@ -791,7 +791,7 @@ PVR_ERROR PVRIptvData::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::stri
 
 }
 
-int PVRIptvData::GetChannelGroupsAmount(void)
+int Data::GetChannelGroupsAmount(void)
 {
   decltype (m_groups) groups;
   {
@@ -801,7 +801,7 @@ int PVRIptvData::GetChannelGroupsAmount(void)
   return groups->size();
 }
 
-PVR_ERROR PVRIptvData::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
+PVR_ERROR Data::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
   WaitForChannels();
 
@@ -834,7 +834,7 @@ PVR_ERROR PVRIptvData::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
+PVR_ERROR Data::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
   WaitForChannels();
 
@@ -847,7 +847,7 @@ PVR_ERROR PVRIptvData::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHA
   }
 
   std::vector<PVR_CHANNEL_GROUP_MEMBER> xbmc_group_members;
-  auto group_i = std::find_if(groups->cbegin(), groups->cend(), [&group] (PVRIptvChannelGroup const & g) { return g.strGroupName == group.strGroupName; });
+  auto group_i = std::find_if(groups->cbegin(), groups->cend(), [&group] (ChannelGroup const & g) { return g.strGroupName == group.strGroupName; });
   if (group_i != groups->cend())
   {
     int order = 0;
@@ -856,7 +856,7 @@ PVR_ERROR PVRIptvData::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHA
       if (member < 0 || member >= channels->size())
         continue;
 
-      const PVRIptvChannel &channel = (*channels)[member];
+      const Channel &channel = (*channels)[member];
       PVR_CHANNEL_GROUP_MEMBER xbmcGroupMember;
       memset(&xbmcGroupMember, 0, sizeof(PVR_CHANNEL_GROUP_MEMBER));
 
@@ -875,9 +875,9 @@ PVR_ERROR PVRIptvData::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHA
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetEPGForChannel(ADDON_HANDLE handle, int iChannelUid, time_t iStart, time_t iEnd)
+PVR_ERROR Data::GetEPGForChannel(ADDON_HANDLE handle, int iChannelUid, time_t iStart, time_t iEnd)
 {
-  XBMC->Log(LOG_DEBUG, "%s %i, from=%s to=%s", __FUNCTION__, iChannelUid, ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(iEnd).c_str());
+  XBMC->Log(ADDON::LOG_DEBUG, "%s %i, from=%s to=%s", __FUNCTION__, iChannelUid, ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(iEnd).c_str());
   std::lock_guard<std::mutex> critical(m_mutex);
   // Note: For future scheduled timers Kodi requests EPG (this function) with
   // iStart & iEnd as given by the timer timespan. But we don't want to narrow
@@ -894,10 +894,10 @@ static PVR_ERROR GetEPGData(const EPG_TAG* tag
     , bool * isChannelPinLocked = nullptr
     )
 {
-  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [tag] (const PVRIptvChannel & c) { return c.iUniqueId == tag->iUniqueChannelId; });
+  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [tag] (const Channel & c) { return c.iUniqueId == tag->iUniqueChannelId; });
   if (channels->cend() == channel_i)
   {
-    XBMC->Log(LOG_NOTICE, "%s can't find channel %d", __FUNCTION__, tag->iUniqueChannelId);
+    XBMC->Log(ADDON::LOG_NOTICE, "%s can't find channel %d", __FUNCTION__, tag->iUniqueChannelId);
     return PVR_ERROR_INVALID_PARAMETERS;
   }
   if (isChannelPinLocked)
@@ -907,13 +907,13 @@ static PVR_ERROR GetEPGData(const EPG_TAG* tag
 
   if (epg->cend() == ch_epg_i || (epg_i = ch_epg_i->second.epg.find(tag->iUniqueBroadcastId)) == ch_epg_i->second.epg.cend())
   {
-    XBMC->Log(LOG_NOTICE, "%s can't find EPG data for channel %s, time %d", __FUNCTION__, channel_i->strId.c_str(), tag->iUniqueBroadcastId);
+    XBMC->Log(ADDON::LOG_NOTICE, "%s can't find EPG data for channel %s, time %d", __FUNCTION__, channel_i->strId.c_str(), tag->iUniqueBroadcastId);
     return PVR_ERROR_INVALID_PARAMETERS;
   }
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const
+PVR_ERROR Data::IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -932,7 +932,7 @@ PVR_ERROR PVRIptvData::IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) c
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const
+PVR_ERROR Data::IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -951,7 +951,7 @@ PVR_ERROR PVRIptvData::IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordabl
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType)
+PVR_ERROR Data::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -983,9 +983,9 @@ PVR_ERROR PVRIptvData::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamU
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::SetEPGTimeFrame(int iDays)
+PVR_ERROR Data::SetEPGTimeFrame(int iDays)
 {
-  XBMC->Log(LOG_DEBUG, "%s iDays=%d", __FUNCTION__, iDays);
+  XBMC->Log(ADDON::LOG_DEBUG, "%s iDays=%d", __FUNCTION__, iDays);
   time_t now = time(nullptr);
   std::lock_guard<std::mutex> critical(m_mutex);
   m_epgMinTime = now;
@@ -995,7 +995,7 @@ PVR_ERROR PVRIptvData::SetEPGTimeFrame(int iDays)
   return PVR_ERROR_NO_ERROR;
 }
 
-int PVRIptvData::ParseDateTime(std::string strDate)
+int Data::ParseDateTime(std::string strDate)
 {
   struct tm timeinfo;
   memset(&timeinfo, 0, sizeof(tm));
@@ -1011,7 +1011,7 @@ int PVRIptvData::ParseDateTime(std::string strDate)
   return t - DiffBetweenPragueAndLocalTime(&t);
 }
 
-int PVRIptvData::GetRecordingsAmount()
+int Data::GetRecordingsAmount()
 {
   decltype (m_recordings) recordings;
   {
@@ -1021,7 +1021,7 @@ int PVRIptvData::GetRecordingsAmount()
   return recordings->size();
 }
 
-PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
+PVR_ERROR Data::GetRecordings(ADDON_HANDLE handle)
 {
   decltype (m_recordings) recordings;
   {
@@ -1029,7 +1029,7 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
     recordings = m_recordings;
   }
   std::vector<PVR_RECORDING> xbmc_records;
-  auto insert_lambda = [&xbmc_records] (const PVRIptvRecording & rec)
+  auto insert_lambda = [&xbmc_records] (const Recording & rec)
   {
     PVR_RECORDING xbmcRecord;
     memset(&xbmcRecord, 0, sizeof(PVR_RECORDING));
@@ -1059,14 +1059,14 @@ PVR_ERROR PVRIptvData::GetRecordings(ADDON_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType)
+PVR_ERROR Data::GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType)
 {
   decltype (m_recordings) recordings;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     recordings = m_recordings;
   }
-  auto rec_i = std::find_if(recordings->cbegin(), recordings->cend(), [recording] (const PVRIptvRecording & r) { return recording == r.strRecordId; });
+  auto rec_i = std::find_if(recordings->cbegin(), recordings->cend(), [recording] (const Recording & r) { return recording == r.strRecordId; });
   if (recordings->cend() == rec_i)
     return PVR_ERROR_INVALID_PARAMETERS;
 
@@ -1078,17 +1078,17 @@ PVR_ERROR PVRIptvData::GetRecordingStreamUrl(const std::string & recording, std:
   return PVR_ERROR_NO_ERROR;
 }
 
-bool PVRIptvData::RecordingExists(const std::string & recordId) const
+bool Data::RecordingExists(const std::string & recordId) const
 {
   decltype (m_recordings) recordings;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     recordings = m_recordings;
   }
-  return recordings->cend() != std::find_if(recordings->cbegin(), recordings->cend(), [&recordId] (const PVRIptvRecording & r) { return recordId == r.strRecordId; });
+  return recordings->cend() != std::find_if(recordings->cbegin(), recordings->cend(), [&recordId] (const Recording & r) { return recordId == r.strRecordId; });
 }
 
-int PVRIptvData::GetTimersAmount()
+int Data::GetTimersAmount()
 {
   decltype (m_timers) timers;
   {
@@ -1099,7 +1099,7 @@ int PVRIptvData::GetTimersAmount()
 }
 
 
-PVR_ERROR PVRIptvData::GetTimers(ADDON_HANDLE handle)
+PVR_ERROR Data::GetTimers(ADDON_HANDLE handle)
 {
   decltype (m_timers) timers;
   {
@@ -1134,7 +1134,7 @@ PVR_ERROR PVRIptvData::GetTimers(ADDON_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer)
+PVR_ERROR Data::AddTimer(const PVR_TIMER &timer)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -1144,27 +1144,27 @@ PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer)
     epg = m_epg;
   }
 
-  const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&timer] (const PVRIptvChannel & ch) { return ch.iUniqueId == timer.iClientChannelUid; });
+  const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&timer] (const Channel & ch) { return ch.iUniqueId == timer.iClientChannelUid; });
   if (channel_i == channels->cend())
   {
-    XBMC->Log(LOG_ERROR, "%s - channel not found", __FUNCTION__);
+    XBMC->Log(ADDON::LOG_ERROR, "%s - channel not found", __FUNCTION__);
     return PVR_ERROR_SERVER_ERROR;
   }
   const auto epg_channel_i = epg->find(channel_i->strId);
   if (epg_channel_i == epg->cend())
   {
-    XBMC->Log(LOG_ERROR, "%s - epg channel not found", __FUNCTION__);
+    XBMC->Log(ADDON::LOG_ERROR, "%s - epg channel not found", __FUNCTION__);
     return PVR_ERROR_SERVER_ERROR;
   }
 
   const auto epg_i = epg_channel_i->second.epg.find(timer.startTime);
   if (epg_i == epg_channel_i->second.epg.cend())
   {
-    XBMC->Log(LOG_ERROR, "%s - event not found", __FUNCTION__);
+    XBMC->Log(ADDON::LOG_ERROR, "%s - event not found", __FUNCTION__);
     return PVR_ERROR_SERVER_ERROR;
   }
 
-  const PVRIptvEpgEntry & epg_entry = epg_i->second;
+  const EpgEntry & epg_entry = epg_i->second;
   std::string record_id;
   if (m_manager.addTimer(epg_entry.strEventId, record_id))
   {
@@ -1182,7 +1182,7 @@ PVR_ERROR PVRIptvData::AddTimer(const PVR_TIMER &timer)
   return PVR_ERROR_SERVER_ERROR;
 }
 
-PVR_ERROR PVRIptvData::DeleteRecord(const string &strRecordId)
+PVR_ERROR Data::DeleteRecord(const std::string &strRecordId)
 {
   if (m_manager.deleteRecord(strRecordId))
   {
@@ -1192,7 +1192,7 @@ PVR_ERROR PVRIptvData::DeleteRecord(const string &strRecordId)
   return PVR_ERROR_SERVER_ERROR;
 }
 
-PVR_ERROR PVRIptvData::DeleteRecord(int iRecordId)
+PVR_ERROR Data::DeleteRecord(int iRecordId)
 {
   std::ostringstream os;
   os << iRecordId;
@@ -1200,7 +1200,7 @@ PVR_ERROR PVRIptvData::DeleteRecord(int iRecordId)
   return DeleteRecord(os.str());
 }
 
-PVR_ERROR PVRIptvData::GetDriveSpace(long long *iTotal, long long *iUsed)
+PVR_ERROR Data::GetDriveSpace(long long *iTotal, long long *iUsed)
 {
   {
     std::lock_guard<std::mutex> critical(m_mutex);
@@ -1210,12 +1210,12 @@ PVR_ERROR PVRIptvData::GetDriveSpace(long long *iTotal, long long *iUsed)
   return PVR_ERROR_NO_ERROR;
 }
 
-bool PVRIptvData::LoggedIn() const
+bool Data::LoggedIn() const
 {
   return m_manager.loggedIn();
 }
 
-properties_t PVRIptvData::GetStreamProperties(const std::string & url, const std::string & streamType, bool isLive) const
+properties_t Data::GetStreamProperties(const std::string & url, const std::string & streamType, bool isLive) const
 {
   static const std::set<std::string> ADAPTIVE_TYPES = {"mpd", "ism", "hls"};
   properties_t props;
@@ -1230,7 +1230,7 @@ properties_t PVRIptvData::GetStreamProperties(const std::string & url, const std
   return props;
 }
 
-std::string PVRIptvData::ChannelsList() const
+std::string Data::ChannelsList() const
 {
   decltype (m_channels) channels;
   {
@@ -1250,7 +1250,7 @@ std::string PVRIptvData::ChannelsList() const
   return os.str();
 }
 
-std::string PVRIptvData::ChannelStreamType(const std::string & channelId) const
+std::string Data::ChannelStreamType(const std::string & channelId) const
 {
   decltype (m_channels) channels;
   {
@@ -1259,15 +1259,15 @@ std::string PVRIptvData::ChannelStreamType(const std::string & channelId) const
   }
 
   std::string stream_type = "unknown";
-  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&channelId] (const PVRIptvChannel & c) { return c.strId == channelId; });
+  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&channelId] (const Channel & c) { return c.strId == channelId; });
   if (channels->cend() == channel_i)
-    XBMC->Log(LOG_NOTICE, "%s can't find channel %s", __FUNCTION__, channelId.c_str());
+    XBMC->Log(ADDON::LOG_NOTICE, "%s can't find channel %s", __FUNCTION__, channelId.c_str());
   else
     stream_type = channel_i->strStreamType;
   return stream_type;
 }
 
-bool PVRIptvData::PinCheckUnlock(bool isPinLocked)
+bool Data::PinCheckUnlock(bool isPinLocked)
 {
   if (!isPinLocked)
     return true;
@@ -1282,12 +1282,12 @@ bool PVRIptvData::PinCheckUnlock(bool isPinLocked)
     {
       if (!m_manager.pinUnlock(pin))
       {
-        XBMC->Log(LOG_ERROR, "PIN-unlocking failed");
+        XBMC->Log(ADDON::LOG_ERROR, "PIN-unlocking failed");
         return false;
       }
     } else
     {
-      XBMC->Log(LOG_ERROR, "PIN-entering cancelled");
+      XBMC->Log(ADDON::LOG_ERROR, "PIN-entering cancelled");
       return false;
     }
   }
@@ -1295,3 +1295,5 @@ bool PVRIptvData::PinCheckUnlock(bool isPinLocked)
   SetLoadRecordings();
   return true;
 }
+
+} // namespace sledovanitvcz

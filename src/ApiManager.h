@@ -24,19 +24,22 @@
  *
  */
 
-#ifndef APIMANAGER_H
-#define APIMANAGER_H
+#ifndef sledovanitcz_ApiManager_h
+#define sledovanitcz_ApiManager_h
 
 #include <string>
 #include <map>
 #include <memory>
 
-typedef std::map<std::string, std::string> ApiParamMap;
-
 namespace Json
 {
   class Value;
 }
+
+namespace sledovanitvcz
+{
+
+typedef std::map<std::string, std::string> ApiParamMap;
 
 class ApiManager
 {
@@ -96,4 +99,5 @@ private:
   std::shared_ptr<const std::string> m_sessionId;
 };
 
-#endif // APIMANAGER_H
+} // namespace sledovanitvcz
+#endif // sledovanitcz_ApiManager_h
