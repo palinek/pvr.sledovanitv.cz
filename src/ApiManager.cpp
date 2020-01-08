@@ -350,7 +350,7 @@ bool ApiManager::login()
     }
     else
     {
-      XBMC->Log(ADDON::LOG_INFO, "Device logged in. Session ID: %s", new_session_id.c_str());
+      XBMC->Log(ADDON::LOG_NOTICE, "Device logged in. Session ID: %s", new_session_id.c_str());
     }
   }
 

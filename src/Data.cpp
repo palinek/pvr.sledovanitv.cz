@@ -141,7 +141,7 @@ void Data::SetLoadRecordings()
 
 void Data::TriggerFullRefresh()
 {
-  XBMC->Log(ADDON::LOG_INFO, "%s triggering channels/EGP full refresh", __FUNCTION__);
+  XBMC->Log(ADDON::LOG_NOTICE, "%s triggering channels/EGP full refresh", __FUNCTION__);
   m_iLastEnd = 0;
   m_iLastStart = 0;
 
@@ -514,7 +514,7 @@ bool Data::LoadRecordings()
       directory = loc.get();
       directory += " - ";
       directory += locked;
-      XBMC->Log(ADDON::LOG_INFO, "Timer/recording '%s' is locked(%s)", title.c_str(), locked.c_str());
+      XBMC->Log(ADDON::LOG_NOTICE, "Timer/recording '%s' is locked(%s)", title.c_str(), locked.c_str());
     }
     std::string str_ch_id = record.get("channel", "").asString();
     const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&str_ch_id] (const Channel & ch) { return ch.strId == str_ch_id; });
@@ -662,7 +662,7 @@ bool Data::LoadPlayList(void)
     {
       if (!m_showLockedChannels || (m_showLockedOnlyPin && locked != "pin"))
       {
-        XBMC->Log(ADDON::LOG_INFO, "Skipping locked(%s) channel %s", locked.c_str(), channel.get("name", "").asString().c_str());
+        XBMC->Log(ADDON::LOG_NOTICE, "Skipping locked(%s) channel#%u %s", locked.c_str(), i + 1, channel.get("name", "").asString().c_str());
         continue;
       }
     }
@@ -674,9 +674,9 @@ bool Data::LoadPlayList(void)
     iptvchan.strGroupId = channel.get("group", "").asString();
     iptvchan.strStreamURL = channel.get("url", "").asString();
     iptvchan.strStreamType = channel.get("streamType", "").asString();
-    XBMC->Log(ADDON::LOG_DEBUG, "Channel %s, URL: %s", iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
     iptvchan.iUniqueId = i + 1;
     iptvchan.iChannelNumber = i + 1;
+    XBMC->Log(ADDON::LOG_DEBUG, "Channel#%d %s, URL: %s", iptvchan.iUniqueId, iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
     iptvchan.strIconPath = channel.get("logoUrl", "").asString();
     iptvchan.bIsRadio = channel.get("type", "").asString() != "tv";
     iptvchan.bIsPinLocked = locked == "pin";
@@ -803,6 +803,7 @@ int Data::GetChannelGroupsAmount(void)
 
 PVR_ERROR Data::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
+  XBMC->Log(ADDON::LOG_DEBUG, "%s %s", __FUNCTION__, bRadio ? "radio" : "tv");
   WaitForChannels();
 
   decltype (m_groups) groups;
@@ -836,6 +837,7 @@ PVR_ERROR Data::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 
 PVR_ERROR Data::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
+  XBMC->Log(ADDON::LOG_DEBUG, "%s %s", __FUNCTION__, group.strGroupName);
   WaitForChannels();
 
   decltype (m_groups) groups;
