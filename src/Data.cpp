@@ -694,7 +694,7 @@ bool Data::LoadPlayList(void)
     group.strGroupName = groups[group_id].asString();
     for (const auto & channel : *new_channels)
     {
-      if (channel.strGroupId == group_id)
+      if (channel.strGroupId == group_id && !channel.bIsRadio)
         group.members.push_back(channel.iUniqueId);
     }
     new_groups->push_back(std::move(group));
