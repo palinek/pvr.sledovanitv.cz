@@ -704,15 +704,20 @@ bool Data::LoadPlayList(void)
   XBMC->QueueNotification(ADDON::QUEUE_INFO, "%d channels loaded.", new_channels->size());
 
 
+  bool channels_loaded;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     m_channels = std::move(new_channels);
     m_groups = std::move(new_groups);
+    channels_loaded = m_bChannelsLoaded;
     m_bChannelsLoaded = true;
   }
   m_waitCond.notify_all();
-  PVR->TriggerChannelUpdate();
-  PVR->TriggerChannelGroupsUpdate();
+  if (channels_loaded)
+  {
+    PVR->TriggerChannelUpdate();
+    PVR->TriggerChannelGroupsUpdate();
+  }
 
   return true;
 }
