@@ -56,7 +56,8 @@ public:
 public:
   ApiManager(const std::string & userName
       , const std::string & userPassword
-      , const std::string & overridenMac);
+      , const std::string & overridenMac
+      , const std::string & product);
 
   bool pairDevice();
   bool login();
@@ -93,6 +94,7 @@ private:
   const std::string m_userName;
   const std::string m_userPassword;
   const std::string m_overridenMac;
+  const std::string m_product;
   std::string m_deviceId;
   std::string m_password;
   bool m_pinUnlocked;

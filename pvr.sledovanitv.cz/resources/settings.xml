@@ -30,6 +30,14 @@
           </constraints>
           <control type="edit" format="string" />
         </setting>
+        <setting id="productId" type="string" label="30012">
+          <level>3</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string" />
+        </setting>
         <setting id="streamQuality" type="integer" label="30002">
           <level>1</level>
           <default>0</default> <!-- StreamQuality_t::SQ_DEFAULT -->

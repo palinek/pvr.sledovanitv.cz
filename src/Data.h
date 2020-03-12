@@ -141,6 +141,7 @@ struct Configuration
   std::string userName;
   std::string password;
   std::string deviceId; //!< device identifier (value for overriding the MAC address detection)
+  std::string productId; //!< product identifier (value for overriding the hostname detection)
   int streamQuality;
   int epgMaxDays;
   unsigned fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh

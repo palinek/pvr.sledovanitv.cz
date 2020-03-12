@@ -106,6 +106,11 @@ static void ReadSettings(sledovanitvcz::Configuration & cfg)
     cfg.deviceId = buffer;
   }
 
+  if (XBMC->GetSetting("productId", &buffer))
+  {
+    cfg.productId = buffer;
+  }
+
   if (!XBMC->GetSetting("streamQuality", &cfg.streamQuality))
   {
     cfg.streamQuality = 0;

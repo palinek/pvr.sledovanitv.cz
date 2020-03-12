@@ -104,7 +104,7 @@ Data::Data(Configuration cfg)
   , m_useAdaptive{cfg.useAdaptive}
   , m_showLockedChannels{cfg.showLockedChannels}
   , m_showLockedOnlyPin{cfg.showLockedOnlyPin}
-  , m_manager{std::move(cfg.userName), std::move(cfg.password), std::move(cfg.deviceId)}
+  , m_manager{std::move(cfg.userName), std::move(cfg.password), std::move(cfg.deviceId), std::move(cfg.productId)}
 {
 
   SetEPGTimeFrame(m_epgMaxDays);

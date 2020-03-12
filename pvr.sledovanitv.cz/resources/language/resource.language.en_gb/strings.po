@@ -34,6 +34,10 @@ msgctxt "#30008"
 msgid "Device ID (empty - use MAC address)"
 msgstr "Device ID (empty - use MAC address)"
 
+msgctxt "#30012"
+msgid "Product ID (empty - use hostname)"
+msgstr "Product ID (empty - use hostname)"
+
 msgctxt "#30002"
 msgid "Stream quality"
 msgstr "Stream quality"

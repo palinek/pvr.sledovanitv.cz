@@ -34,6 +34,10 @@ msgctxt "#30008"
 msgid "Device ID (empty - use MAC address)"
 msgstr "ID zařízení (prázdné - použít MAC adresu)"
 
+msgctxt "#30012"
+msgid "Product ID (empty - use hostname)"
+msgstr "ID produktu (prázdné - použít hostname)"
+
 msgctxt "#30002"
 msgid "Stream quality"
 msgstr "Kvalita streamu"
