@@ -265,6 +265,17 @@ bool ApiManager::pairDevice()
   Json::Value root;
   if (pairJson.empty() || !isSuccess(pairJson, root) || root.get("userName", "").asString() != m_userName)
   {
+    // remove pairing if any exising
+    const std::string old_dev_id = root.get("deviceId", "").asString();
+    const std::string old_password = root.get("password", "").asString();
+    if (!old_dev_id.empty())
+    {
+      ApiParamMap params_del;
+      params_del["deviceId"] = old_dev_id;
+      params_del["password"] = old_password;
+      isSuccess(apiCall("delete-pairing", params_del, false));
+    }
+
     new_pairing = true;
     ApiParamMap params;
 
