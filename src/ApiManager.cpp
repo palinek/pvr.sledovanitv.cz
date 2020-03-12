@@ -184,12 +184,14 @@ std::string ApiManager::formatTime(time_t t)
 
 ApiManager::ApiManager(const std::string & userName
     , const std::string & userPassword
-    , const std::string & overridenMac)
+    , const std::string & overridenMac
+    , const std::string & product)
   : m_userName{userName}
   , m_userPassword{userPassword}
   , m_overridenMac{overridenMac}
-  , m_sessionId{std::make_shared<std::string>()}
+  , m_product{product}
   , m_pinUnlocked{false}
+  , m_sessionId{std::make_shared<std::string>()}
 {
   XBMC->Log(ADDON::LOG_NOTICE, "Loading ApiManager");
 }
@@ -266,8 +268,13 @@ bool ApiManager::pairDevice()
     new_pairing = true;
     ApiParamMap params;
 
-    char hostName[256];
-    gethostname(hostName, 256);
+    std::string product = m_product;
+    if (product.empty())
+    {
+      char host_name[256];
+      gethostname(host_name, 256);
+      product = host_name;
+    }
 
     std::string macAddr = m_overridenMac.empty() ? get_mac_address() : m_overridenMac;
     if (macAddr.empty())
@@ -279,7 +286,7 @@ bool ApiManager::pairDevice()
     params["username"] = m_userName;
     params["password"] = m_userPassword;
     params["type"] = "androidportable";
-    params["product"] = hostName;
+    params["product"] = product;
     // compute SHA256 of string representation of MAC address
     params["serial"] = picosha2::hash256_hex_string(macAddr);
     params["unit"] = "default";
