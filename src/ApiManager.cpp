@@ -208,6 +208,8 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & pa
   std::string url = urlPath;
   url += '?';
   url += buildQueryString(paramsMap, putSessionVar);
+  // add User-Agent header... TODO: make it configurable
+  url += "|User-Agent=okhttp%2F3.12.0";
   std::string response;
 
   void *fh = XBMC->OpenFile(url.c_str(), XFILE::READ_NO_CACHE);
