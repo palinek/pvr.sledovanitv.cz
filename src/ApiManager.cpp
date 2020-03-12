@@ -303,7 +303,7 @@ bool ApiManager::pairDevice()
     // compute SHA256 of string representation of MAC address
     params["serial"] = picosha2::hash256_hex_string(macAddr);
     params["unit"] = "default";
-    //params["checkLimit"] = "1";
+    params["checkLimit"] = "1";
 
     pairJson = apiCall("create-pairing", params, false);
   }
@@ -355,6 +355,8 @@ bool ApiManager::login()
   ApiParamMap param;
   param["deviceId"] = m_deviceId;
   param["password"] = m_password;
+  param["version"] = "2.6.21";
+  param["lang"] = "en";
   param["unit"] = "default";
 
   Json::Value root;
@@ -408,12 +410,12 @@ bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdap
   ApiParamMap params;
   params["format"] = "m3u8";
   params["quality"] = std::to_string(quality);
-  std::string caps = useAdaptive ? "adaptive" : "";
-  if (useH265)
+  std::string caps = useH265 ? "h265" : "";
+  if (useAdaptive)
   {
     if (!caps.empty())
       caps += ',';
-    caps += "h265";
+    caps += "adaptive2";
   }
   params["capabilities"] = std::move(caps);
   return isSuccess(apiCall("playlist", params), root);
