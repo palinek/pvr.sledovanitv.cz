@@ -182,13 +182,13 @@ bool Data::LoadEPGJob()
   {
     if (KeepAlive() && max_epg > m_iLastEnd)
     {
-      auto start = m_iLastEnd + DiffBetweenUtcAndLocalTime(&m_iLastEnd);
+      time_t start = m_iLastEnd + DiffBetweenUtcAndLocalTime(&m_iLastEnd);
       LoadEPG(start - (start % 86400) - DiffBetweenUtcAndLocalTime(&start), false);
       updated = true;
     }
     if (KeepAlive() && min_epg < m_iLastStart)
     {
-      auto start = m_iLastStart - 86400;
+      time_t start = m_iLastStart - 86400;
       start += DiffBetweenPragueAndLocalTime(&start);
       LoadEPG(start - (start % 86400) - DiffBetweenUtcAndLocalTime(&start), false);
       updated = true;
