@@ -18,18 +18,20 @@ set(DEPLIBS ${JSONCPP_LIBRARIES})
 
 
 set(SLEDOVANITV_SOURCES src/client.cpp
-  src/apimanager.cpp
-  src/PVRIptvData.cpp)
+  src/ApiManager.cpp
+  src/Data.cpp)
 
 set(SLEDOVANITV_HEADERS src/client.h
-  src/apimanager.h
+  src/ApiManager.h
   src/CallLimiter.hh
-  src/PVRIptvData.h)
+  src/Data.h)
 
 if(WIN32)
   add_definitions("/wd4996")
 endif()
 
 build_addon(pvr.sledovanitv.cz SLEDOVANITV DEPLIBS)
+set_property(TARGET pvr.sledovanitv.cz PROPERTY CXX_STANDARD 11)
+set_property(TARGET pvr.sledovanitv.cz PROPERTY CXX_STANDARD_REQUIRED ON)
 
 include(CPack)

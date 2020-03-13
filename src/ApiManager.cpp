@@ -52,7 +52,7 @@
 #include <iostream>
 
 #include "client.h"
-#include "apimanager.h"
+#include "ApiManager.h"
 #include "picosha2.h"
 #include <ctime>
 #include <sstream>
@@ -60,7 +60,8 @@
 #include <algorithm>
 #include <atomic>
 
-using namespace ADDON;
+namespace sledovanitvcz
+{
 
 const std::string ApiManager::API_URL = "https://sledovanitv.cz/api/";
 const std::string ApiManager::TIMESHIFTINFO_URL = "https://sledovanitv.cz/playback/timeshiftInfo";
@@ -106,13 +107,13 @@ static std::string get_mac_address()
 {
   std::string mac_addr;
 #if defined(TARGET_ANDROID) && __ANDROID_API__ < 24
-  XBMC->Log(LOG_NOTICE, "Can't get MAC address with target Android API < 24 (no getifaddrs() support)");
+  XBMC->Log(ADDON::LOG_NOTICE, "Can't get MAC address with target Android API < 24 (no getifaddrs() support)");
 #endif
 #if defined(TARGET_LINUX) || defined(TARGET_FREEBSD) || defined(TARGET_DARWIN)
     struct ifaddrs * addrs;
     if (0 != getifaddrs(&addrs))
     {
-      XBMC->Log(LOG_NOTICE, "While getting MAC address getifaddrs() failed, %s", strerror(errno));
+      XBMC->Log(ADDON::LOG_NOTICE, "While getting MAC address getifaddrs() failed, %s", strerror(errno));
       return mac_addr;
     }
     std::unique_ptr<struct ifaddrs, decltype (&freeifaddrs)> if_addrs{addrs, &freeifaddrs};
@@ -168,7 +169,7 @@ static std::string get_mac_address()
       }
     } else
     {
-      XBMC->Log(LOG_NOTICE, "GetAdaptersAddresses failed...");
+      XBMC->Log(ADDON::LOG_NOTICE, "GetAdaptersAddresses failed...");
     }
 #endif
     return mac_addr;
@@ -181,12 +182,18 @@ std::string ApiManager::formatTime(time_t t)
   return buf;
 }
 
-ApiManager::ApiManager(const std::string & userName, const std::string & userPassword)
+ApiManager::ApiManager(const std::string & userName
+    , const std::string & userPassword
+    , const std::string & overridenMac
+    , const std::string & product)
   : m_userName{userName}
   , m_userPassword{userPassword}
+  , m_overridenMac{overridenMac}
+  , m_product{product}
+  , m_pinUnlocked{false}
   , m_sessionId{std::make_shared<std::string>()}
 {
-  XBMC->Log(LOG_NOTICE, "Loading ApiManager");
+  XBMC->Log(ADDON::LOG_NOTICE, "Loading ApiManager");
 }
 
 std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar) const
@@ -201,6 +208,8 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & pa
   std::string url = urlPath;
   url += '?';
   url += buildQueryString(paramsMap, putSessionVar);
+  // add User-Agent header... TODO: make it configurable
+  url += "|User-Agent=okhttp%2F3.12.0";
   std::string response;
 
   void *fh = XBMC->OpenFile(url.c_str(), XFILE::READ_NO_CACHE);
@@ -213,7 +222,7 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & pa
   }
   else
   {
-    XBMC->Log(LOG_ERROR, "Cannot open url");
+    XBMC->Log(ADDON::LOG_ERROR, "Cannot open url");
   }
 
   return response;
@@ -236,11 +245,11 @@ bool ApiManager::isSuccess(const std::string &response, Json::Value & root)
   {
     bool success = root.get("status", 0).asInt() == 1;
     if (!success)
-      XBMC->Log(LOG_ERROR, "Error indicated in response. status: %d, error: %s", root.get("status", 0).asInt(), root.get("error", "").asString().c_str());
+      XBMC->Log(ADDON::LOG_ERROR, "Error indicated in response. status: %d, error: %s", root.get("status", 0).asInt(), root.get("error", "").asString().c_str());
     return success;
   }
 
-  XBMC->Log(LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", std::min(response.size(), static_cast<size_t>(1024)), response.c_str(), jsonReaderError.c_str());
+  XBMC->Log(ADDON::LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", std::min(response.size(), static_cast<size_t>(1024)), response.c_str(), jsonReaderError.c_str());
   return false;
 }
 
@@ -258,27 +267,43 @@ bool ApiManager::pairDevice()
   Json::Value root;
   if (pairJson.empty() || !isSuccess(pairJson, root) || root.get("userName", "").asString() != m_userName)
   {
+    // remove pairing if any exising
+    const std::string old_dev_id = root.get("deviceId", "").asString();
+    const std::string old_password = root.get("password", "").asString();
+    if (!old_dev_id.empty())
+    {
+      ApiParamMap params_del;
+      params_del["deviceId"] = old_dev_id;
+      params_del["password"] = old_password;
+      isSuccess(apiCall("delete-pairing", params_del, false));
+    }
+
     new_pairing = true;
     ApiParamMap params;
 
-    char hostName[256];
-    gethostname(hostName, 256);
+    std::string product = m_product;
+    if (product.empty())
+    {
+      char host_name[256];
+      gethostname(host_name, 256);
+      product = host_name;
+    }
 
-    std::string macAddr = get_mac_address();
+    std::string macAddr = m_overridenMac.empty() ? get_mac_address() : m_overridenMac;
     if (macAddr.empty())
     {
-      XBMC->Log(LOG_NOTICE, "Unable to get MAC address, using a dummy for serial");
+      XBMC->Log(ADDON::LOG_NOTICE, "Unable to get MAC address, using a dummy for serial");
       macAddr = "11223344";
     }
 
     params["username"] = m_userName;
     params["password"] = m_userPassword;
     params["type"] = "androidportable";
-    params["product"] = hostName;
+    params["product"] = product;
     // compute SHA256 of string representation of MAC address
     params["serial"] = picosha2::hash256_hex_string(macAddr);
     params["unit"] = "default";
-    //params["checkLimit"] = "1";
+    params["checkLimit"] = "1";
 
     pairJson = apiCall("create-pairing", params, false);
   }
@@ -293,7 +318,7 @@ bool ApiManager::pairDevice()
     m_deviceId = buf;
     m_password = passwd;
 
-    XBMC->Log(LOG_DEBUG, "Device ID: %d, Password: %s", devId, passwd.c_str());
+    XBMC->Log(ADDON::LOG_DEBUG, "Device ID: %d, Password: %s", devId, passwd.c_str());
 
     const bool paired = !m_deviceId.empty() && !m_password.empty();
 
@@ -309,7 +334,7 @@ bool ApiManager::pairDevice()
   }
   else
   {
-    XBMC->Log(LOG_ERROR, "Error in pairing response.");
+    XBMC->Log(ADDON::LOG_ERROR, "Error in pairing response.");
   }
 
   return false;
@@ -317,11 +342,12 @@ bool ApiManager::pairDevice()
 
 bool ApiManager::login()
 {
+  m_pinUnlocked = false;
   if (m_deviceId.empty() && m_password.empty())
   {
     if (!pairDevice())
     {
-      XBMC->Log(LOG_ERROR, "Cannot pair device");
+      XBMC->Log(ADDON::LOG_ERROR, "Cannot pair device");
       return false;
     }
   }
@@ -329,6 +355,8 @@ bool ApiManager::login()
   ApiParamMap param;
   param["deviceId"] = m_deviceId;
   param["password"] = m_password;
+  param["version"] = "2.6.21";
+  param["lang"] = "en";
   param["unit"] = "default";
 
   Json::Value root;
@@ -340,11 +368,11 @@ bool ApiManager::login()
 
     if (new_session_id.empty())
     {
-      XBMC->Log(LOG_ERROR, "Cannot perform device login");
+      XBMC->Log(ADDON::LOG_ERROR, "Cannot perform device login");
     }
     else
     {
-      XBMC->Log(LOG_INFO, "Device logged in. Session ID: %s", new_session_id.c_str());
+      XBMC->Log(ADDON::LOG_NOTICE, "Device logged in. Session ID: %s", new_session_id.c_str());
     }
   }
 
@@ -361,17 +389,33 @@ bool ApiManager::login()
   return success;
 }
 
+bool ApiManager::pinUnlock(const std::string & pin)
+{
+  ApiParamMap params;
+  params["pin"] = pin;
+
+  bool result = isSuccess(apiCall("pin-unlock", params));
+  if (result)
+    m_pinUnlocked = true;
+  return result;
+}
+
+bool ApiManager::pinUnlocked() const
+{
+  return m_pinUnlocked;
+}
+
 bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root)
 {
   ApiParamMap params;
   params["format"] = "m3u8";
   params["quality"] = std::to_string(quality);
-  std::string caps = useAdaptive ? "adaptive" : "";
-  if (useH265)
+  std::string caps = useH265 ? "h265" : "";
+  if (useAdaptive)
   {
     if (!caps.empty())
       caps += ',';
-    caps += "h265";
+    caps += "adaptive2";
   }
   params["capabilities"] = std::move(caps);
   return isSuccess(apiCall("playlist", params), root);
@@ -484,7 +528,7 @@ std::string ApiManager::urlEncode(const std::string &str)
 
 std::string ApiManager::buildQueryString(const ApiParamMap & paramMap, bool putSessionVar) const
 {
-  XBMC->Log(LOG_DEBUG, "%s - size %d", __FUNCTION__, paramMap.size());
+  XBMC->Log(ADDON::LOG_DEBUG, "%s - size %d", __FUNCTION__, paramMap.size());
   std::string strOut;
   for (const auto & param : paramMap)
   {
@@ -496,11 +540,12 @@ std::string ApiManager::buildQueryString(const ApiParamMap & paramMap, bool putS
     strOut += param.first + "=" + urlEncode(param.second);
   }
 
-  std::shared_ptr<const std::string> session_id = std::atomic_load(&m_sessionId);
-
   if (putSessionVar)
+  {
+    auto session_id = std::atomic_load(&m_sessionId);
     strOut += "&PHPSESSID=";
-  strOut += *session_id;
+    strOut += *session_id;
+  }
 
   return strOut;
 }
@@ -510,7 +555,7 @@ std::string ApiManager::readPairFile()
   std::string url = GetUserFilePath(PAIR_FILE);
   std::string strContent;
 
-  XBMC->Log(LOG_DEBUG, "Openning file %s", url.c_str());
+  XBMC->Log(ADDON::LOG_DEBUG, "Openning file %s", url.c_str());
 
   void* fileHandle = XBMC->OpenFile(url.c_str(), 0);
   if (fileHandle)
@@ -535,3 +580,5 @@ void ApiManager::createPairFile(const std::string &content)
     XBMC->CloseFile(fileHandle);
   }
 }
+
+} // namespace sledovanitvcz

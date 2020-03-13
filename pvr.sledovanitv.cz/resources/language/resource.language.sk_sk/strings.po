@@ -30,6 +30,14 @@ msgctxt "#30001"
 msgid "Password"
 msgstr "Heslo"
 
+msgctxt "#30008"
+msgid "Device ID (empty - use MAC address)"
+msgstr "ID zariadenia (prázdne - použiť MAC adresu)"
+
+msgctxt "#30012"
+msgid "Product ID (empty - use hostname)"
+msgstr "ID produktu (prázdne - použiť hostname)"
+
 msgctxt "#30002"
 msgid "Stream quality"
 msgstr "Kvalita streamu"
@@ -54,6 +62,10 @@ msgctxt "#30007"
 msgid "Show unavailable channels"
 msgstr "Zobrazovať nedostupné kanály"
 
+msgctxt "#30009"
+msgid "Show only PIN locked channels"
+msgstr "Zobrazovať len kanály blokované PIN"
+
 msgctxt "#30100"
 msgid "Refresh times"
 msgstr "Časy aktualizácie"
@@ -77,3 +89,7 @@ msgstr "Interval overovania EPG"
 msgctxt "#30201"
 msgid "unavailable"
 msgstr "nedostupné"
+
+msgctxt "#30202"
+msgid "Enter PIN for unlock"
+msgstr "Zadajte PIN pre odmknutie"

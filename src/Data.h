@@ -1,4 +1,3 @@
-#pragma once
 /*
  *      Copyright (c) 2018~now Palo Kisa <palo.kisa@gmail.com>
  *
@@ -25,16 +24,22 @@
  *
  */
 
+#ifndef sledovanitvcz_Data_h
+#define sledovanitvcz_Data_h
+
 #include <vector>
 #include "client.h"
 #include <thread>
-#include "apimanager.h"
+#include "ApiManager.h"
 #include <mutex>
 #include <memory>
 #include <condition_variable>
 #include <map>
 
-struct PVRIptvEpgEntry
+namespace sledovanitvcz
+{
+
+struct EpgEntry
 {
   unsigned    iBroadcastId;
   int         iChannelId;
@@ -52,15 +57,15 @@ struct PVRIptvEpgEntry
   std::string strRecordId; // optionally recorded
 };
 
-typedef std::map<time_t, PVRIptvEpgEntry> epg_entry_container_t;
-struct PVRIptvEpgChannel
+typedef std::map<time_t, EpgEntry> epg_entry_container_t;
+struct EpgChannel
 {
   std::string                  strId;
   std::string                  strName;
   epg_entry_container_t epg;
 };
 
-struct PVRIptvChannel
+struct Channel
 {
   bool        bIsRadio;
   int         iUniqueId;
@@ -73,9 +78,10 @@ struct PVRIptvChannel
   std::string strId;
   std::string strGroupId;
   std::string strStreamType;
+  bool        bIsPinLocked;
 };
 
-struct PVRIptvChannelGroup
+struct ChannelGroup
 {
   bool              bRadio;
   std::string       strGroupId;
@@ -83,7 +89,7 @@ struct PVRIptvChannelGroup
   std::vector<int>  members;
 };
 
-struct PVRIptvRecording
+struct Recording
 {
   std::string		strRecordId;
   std::string		strTitle;
@@ -98,9 +104,10 @@ struct PVRIptvRecording
   int iLifeTime;
   std::string strStreamType;
   int iChannelUid;
+  bool bIsPinLocked;
 };
 
-struct PVRIptvTimer
+struct Timer
 {
   unsigned int    iClientIndex;
   int             iClientChannelUid;
@@ -122,17 +129,19 @@ struct PVRIptvTimer
   std::string strDirectory;
 };
 
-typedef std::vector<PVRIptvChannelGroup> group_container_t;
-typedef std::vector<PVRIptvChannel> channel_container_t;
-typedef std::map<std::string, PVRIptvEpgChannel> epg_container_t;
-typedef std::vector<PVRIptvRecording> recording_container_t;
-typedef std::vector<PVRIptvTimer> timer_container_t;
+typedef std::vector<ChannelGroup> group_container_t;
+typedef std::vector<Channel> channel_container_t;
+typedef std::map<std::string, EpgChannel> epg_container_t;
+typedef std::vector<Recording> recording_container_t;
+typedef std::vector<Timer> timer_container_t;
 typedef std::map<std::string, std::string> properties_t;
 
-struct PVRIptvConfiguration
+struct Configuration
 {
   std::string userName;
   std::string password;
+  std::string deviceId; //!< device identifier (value for overriding the MAC address detection)
+  std::string productId; //!< product identifier (value for overriding the hostname detection)
   int streamQuality;
   int epgMaxDays;
   unsigned fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh
@@ -142,28 +151,29 @@ struct PVRIptvConfiguration
   bool useH265; //!< flag, if h265 codec should be requested
   bool useAdaptive; //!< flag, if inpustream.adaptive (aka adaptive bitrate streaming) should be used/requested
   bool showLockedChannels; //!< flag, if unavailable/locked channels should be presented
+  bool showLockedOnlyPin; //!< flag, if PIN-locked only channels should be presented
 };
 
-class PVRIptvData
+class Data
 {
 public:
-  PVRIptvData(PVRIptvConfiguration cfg);
-  virtual ~PVRIptvData(void);
+  Data(Configuration cfg);
+  virtual ~Data(void);
 
   int GetChannelsAmount(void);
   PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
-  PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType) const;
+  PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType);
   PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
   PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const;
   PVR_ERROR IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const;
-  PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType) const;
+  PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType);
   PVR_ERROR SetEPGTimeFrame(int iDays);
   int GetChannelGroupsAmount(void);
   PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio);
   PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
   int GetRecordingsAmount();
   PVR_ERROR GetRecordings(ADDON_HANDLE handle);
-  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType) const;
+  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType);
   void GetRecordingsUrls();
   int GetTimersAmount();
   PVR_ERROR GetTimers(ADDON_HANDLE handle);
@@ -194,6 +204,7 @@ protected:
   bool RecordingExists(const std::string & recordId) const;
   std::string ChannelsList() const;
   std::string ChannelStreamType(const std::string & channelId) const;
+  bool PinCheckUnlock(bool isPinLocked);
 
 protected:
   void Process(void);
@@ -230,6 +241,10 @@ private:
   bool m_useH265;
   bool m_useAdaptive;
   bool m_showLockedChannels;
+  bool m_showLockedOnlyPin;
 
   ApiManager                        m_manager;
 };
+
+} //namespace sledovanitvcz
+#endif // sledovanitvcz_Data_h

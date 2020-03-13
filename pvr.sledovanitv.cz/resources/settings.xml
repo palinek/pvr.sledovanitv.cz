@@ -22,6 +22,22 @@
             <hidden>true</hidden>
           </control>
         </setting>
+        <setting id="deviceId" type="string" label="30008">
+          <level>1</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string" />
+        </setting>
+        <setting id="productId" type="string" label="30012">
+          <level>3</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string" />
+        </setting>
         <setting id="streamQuality" type="integer" label="30002">
           <level>1</level>
           <default>0</default> <!-- StreamQuality_t::SQ_DEFAULT -->
@@ -46,6 +62,14 @@
         <setting id="showLockedChannels" type="boolean" label="30007">
           <level>1</level>
           <default>true</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="showLockedOnlyPin" type="boolean" label="30009">
+          <level>1</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="enable" setting="showLockedChannels">true</dependency>
+          </dependencies>
           <control type="toggle" />
         </setting>
       </group>

@@ -24,19 +24,22 @@
  *
  */
 
-#ifndef APIMANAGER_H
-#define APIMANAGER_H
+#ifndef sledovanitcz_ApiManager_h
+#define sledovanitcz_ApiManager_h
 
 #include <string>
 #include <map>
 #include <memory>
 
-typedef std::map<std::string, std::string> ApiParamMap;
-
 namespace Json
 {
   class Value;
 }
+
+namespace sledovanitvcz
+{
+
+typedef std::map<std::string, std::string> ApiParamMap;
 
 class ApiManager
 {
@@ -51,10 +54,14 @@ public:
   static std::string formatTime(time_t t);
 
 public:
-  ApiManager(const std::string & userName, const std::string & userPassword);
+  ApiManager(const std::string & userName
+      , const std::string & userPassword
+      , const std::string & overridenMac
+      , const std::string & product);
 
   bool pairDevice();
   bool login();
+  bool pinUnlock(const std::string & pin);
   bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root);
   bool getStreamQualities(Json::Value & root);
   bool getEpg(time_t start, bool smallDuration, const std::string & channels, Json::Value & root);
@@ -68,6 +75,7 @@ public:
   bool deleteRecord(const std::string &recId);
   bool keepAlive();
   bool loggedIn() const;
+  bool pinUnlocked() const;
 
 private:
   static std::string urlEncode(const std::string &str);
@@ -85,9 +93,13 @@ private:
   static const std::string PAIR_FILE;
   const std::string m_userName;
   const std::string m_userPassword;
+  const std::string m_overridenMac;
+  const std::string m_product;
   std::string m_deviceId;
   std::string m_password;
+  bool m_pinUnlocked;
   std::shared_ptr<const std::string> m_sessionId;
 };
 
-#endif // APIMANAGER_H
+} // namespace sledovanitvcz
+#endif // sledovanitcz_ApiManager_h
