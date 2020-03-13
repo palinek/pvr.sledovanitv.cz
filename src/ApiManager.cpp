@@ -196,7 +196,7 @@ ApiManager::ApiManager(const std::string & userName
   XBMC->Log(ADDON::LOG_NOTICE, "Loading ApiManager");
 }
 
-std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar) const
+std::string ApiManager::call(const std::string & urlPath, const ApiParams_t & paramsMap, bool putSessionVar) const
 {
   if (putSessionVar)
   {
@@ -228,7 +228,7 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParamMap & pa
   return response;
 }
 
-std::string ApiManager::apiCall(const std::string &function, const ApiParamMap & paramsMap, bool putSessionVar /*= true*/) const
+std::string ApiManager::apiCall(const std::string &function, const ApiParams_t & paramsMap, bool putSessionVar /*= true*/) const
 {
   std::string url = API_URL;
   url += function;
@@ -264,22 +264,36 @@ bool ApiManager::pairDevice()
   bool new_pairing = false;
   std::string pairJson = readPairFile();
 
+  std::string macAddr = m_overridenMac.empty() ? get_mac_address() : m_overridenMac;
+  if (macAddr.empty())
+  {
+    XBMC->Log(ADDON::LOG_NOTICE, "Unable to get MAC address, using a dummy for serial");
+    macAddr = "11223344";
+  }
+  // compute SHA256 of string representation of MAC address
+  m_serial = picosha2::hash256_hex_string(macAddr);
+
+
   Json::Value root;
-  if (pairJson.empty() || !isSuccess(pairJson, root) || root.get("userName", "").asString() != m_userName)
+  if (pairJson.empty() || !isSuccess(pairJson, root)
+      || root.get("userName", "").asString() != m_userName
+      || root.get("serial", "").asString() != m_serial
+      )
   {
     // remove pairing if any exising
     const std::string old_dev_id = root.get("deviceId", "").asString();
     const std::string old_password = root.get("password", "").asString();
     if (!old_dev_id.empty())
     {
-      ApiParamMap params_del;
-      params_del["deviceId"] = old_dev_id;
-      params_del["password"] = old_password;
+      ApiParams_t params_del;
+      params_del.emplace_back("deviceId", old_dev_id);
+      params_del.emplace_back("password", old_password);
+      params_del.emplace_back("unit", "default");
       isSuccess(apiCall("delete-pairing", params_del, false));
     }
 
     new_pairing = true;
-    ApiParamMap params;
+    ApiParams_t params;
 
     std::string product = m_product;
     if (product.empty())
@@ -289,21 +303,13 @@ bool ApiManager::pairDevice()
       product = host_name;
     }
 
-    std::string macAddr = m_overridenMac.empty() ? get_mac_address() : m_overridenMac;
-    if (macAddr.empty())
-    {
-      XBMC->Log(ADDON::LOG_NOTICE, "Unable to get MAC address, using a dummy for serial");
-      macAddr = "11223344";
-    }
-
-    params["username"] = m_userName;
-    params["password"] = m_userPassword;
-    params["type"] = "androidportable";
-    params["product"] = product;
-    // compute SHA256 of string representation of MAC address
-    params["serial"] = picosha2::hash256_hex_string(macAddr);
-    params["unit"] = "default";
-    params["checkLimit"] = "1";
+    params.emplace_back("username", m_userName);
+    params.emplace_back("password", m_userPassword);
+    params.emplace_back("type", "androidportable");
+    params.emplace_back("serial", m_serial);
+    params.emplace_back("product", product);
+    params.emplace_back("unit", "default");
+    params.emplace_back("checkLimit", "1");
 
     pairJson = apiCall("create-pairing", params, false);
   }
@@ -326,6 +332,7 @@ bool ApiManager::pairDevice()
     {
       // add the userName to written json
       root["userName"] = m_userName;
+      root["serial"] = m_serial;
       std::ostringstream os;
       os << root;
       createPairFile(os.str());
@@ -352,12 +359,12 @@ bool ApiManager::login()
     }
   }
 
-  ApiParamMap param;
-  param["deviceId"] = m_deviceId;
-  param["password"] = m_password;
-  param["version"] = "2.6.21";
-  param["lang"] = "en";
-  param["unit"] = "default";
+  ApiParams_t param;
+  param.emplace_back("deviceId", m_deviceId);
+  param.emplace_back("password", m_password);
+  param.emplace_back("version", "2.6.21");
+  param.emplace_back("lang", "en");
+  param.emplace_back("unit", "default");
 
   Json::Value root;
 
@@ -391,8 +398,8 @@ bool ApiManager::login()
 
 bool ApiManager::pinUnlock(const std::string & pin)
 {
-  ApiParamMap params;
-  params["pin"] = pin;
+  ApiParams_t params;
+  params.emplace_back("pin", pin);
 
   bool result = isSuccess(apiCall("pin-unlock", params));
   if (result)
@@ -407,9 +414,10 @@ bool ApiManager::pinUnlocked() const
 
 bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root)
 {
-  ApiParamMap params;
-  params["format"] = "m3u8";
-  params["quality"] = std::to_string(quality);
+  ApiParams_t params;
+  params.emplace_back("uuid", m_serial);
+  params.emplace_back("format", "m3u8");
+  params.emplace_back("quality", std::to_string(quality));
   std::string caps = useH265 ? "h265" : "";
   if (useAdaptive)
   {
@@ -417,38 +425,39 @@ bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdap
       caps += ',';
     caps += "adaptive2";
   }
-  params["capabilities"] = std::move(caps);
+  params.emplace_back("capabilities", std::move(caps));
   return isSuccess(apiCall("playlist", params), root);
 }
 
 bool ApiManager::getStreamQualities(Json::Value & root)
 {
-    return isSuccess(apiCall("get-stream-qualities", ApiParamMap()), root);
+    return isSuccess(apiCall("get-stream-qualities", ApiParams_t{}), root);
 }
 
 bool ApiManager::getEpg(time_t start, bool smallDuration, const std::string & channels, Json::Value & root)
 {
-  ApiParamMap params;
+  ApiParams_t params;
 
-  params["time"] = formatTime(start);
-  params["duration"] = smallDuration ? "60" : "1439";
-  params["detail"] = "1";
+  params.emplace_back("time", formatTime(start));
+  params.emplace_back("duration", smallDuration ? "60" : "1439");
+  params.emplace_back("detail", "1");
+  params.emplace_back("allowOrder", "1");
   if (!channels.empty())
-    params["channels"] = std::move(channels);
+    params.emplace_back("channels", std::move(channels));
 
   return isSuccess(apiCall("epg", params), root);
 }
 
 bool ApiManager::getPvr(Json::Value & root)
 {
-  return isSuccess(apiCall("get-pvr", ApiParamMap()), root);
+  return isSuccess(apiCall("get-pvr", ApiParams_t()), root);
 }
 
 std::string ApiManager::getRecordingUrl(const std::string &recId, std::string & channel)
 {
-  ApiParamMap param;
-  param["recordId"] = recId;
-  param["format"] = "m3u8";
+  ApiParams_t param;
+  param.emplace_back("recordId", recId);
+  param.emplace_back("format", "m3u8");
 
   Json::Value root;
 
@@ -466,9 +475,9 @@ bool ApiManager::getTimeShiftInfo(const std::string &eventId
     , std::string & channel
     , int & duration) const
 {
-  ApiParamMap param;
-  param["eventId"] = eventId;
-  param["format"] = "m3u8";
+  ApiParams_t param;
+  param.emplace_back("eventId", eventId);
+  param.emplace_back("format", "m3u8");
 
   Json::Value root;
 
@@ -485,8 +494,8 @@ bool ApiManager::getTimeShiftInfo(const std::string &eventId
 
 bool ApiManager::addTimer(const std::string &eventId, std::string & recordId)
 {
-  ApiParamMap param;
-  param["eventId"] = eventId;
+  ApiParams_t param;
+  param.emplace_back("eventId", eventId);
 
   Json::Value root;
 
@@ -500,15 +509,15 @@ bool ApiManager::addTimer(const std::string &eventId, std::string & recordId)
 
 bool ApiManager::deleteRecord(const std::string &recId)
 {
-  ApiParamMap param;
-  param["recordId"] = recId;
+  ApiParams_t param;
+  param.emplace_back("recordId", recId);
 
   return isSuccess(apiCall("delete-record", param));
 }
 
 bool ApiManager::keepAlive()
 {
-    ApiParamMap param;
+    ApiParams_t param;
     return isSuccess(apiCall("keepalive", param));
 }
 
@@ -526,7 +535,7 @@ std::string ApiManager::urlEncode(const std::string &str)
   return strOut;
 }
 
-std::string ApiManager::buildQueryString(const ApiParamMap & paramMap, bool putSessionVar) const
+std::string ApiManager::buildQueryString(const ApiParams_t & paramMap, bool putSessionVar) const
 {
   XBMC->Log(ADDON::LOG_DEBUG, "%s - size %d", __FUNCTION__, paramMap.size());
   std::string strOut;
@@ -537,7 +546,7 @@ std::string ApiManager::buildQueryString(const ApiParamMap & paramMap, bool putS
       strOut += "&";
     }
 
-    strOut += param.first + "=" + urlEncode(param.second);
+    strOut += std::get<0>(param) + "=" + urlEncode(std::get<1>(param));
   }
 
   if (putSessionVar)
