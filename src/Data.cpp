@@ -59,7 +59,7 @@ static void xbmcStrFree(char * str)
   XBMC->FreeString(str);
 }
 
-static unsigned DiffBetweenPragueAndLocalTime(const time_t * when = nullptr)
+static unsigned DiffBetweenUtcAndLocalTime(const time_t * when = nullptr, int * isdst = nullptr)
 {
   time_t tloc;
   if (0 == when)
@@ -69,13 +69,22 @@ static unsigned DiffBetweenPragueAndLocalTime(const time_t * when = nullptr)
 
   struct tm tm1;
   LOCALTIME_R(&tloc, &tm1);
-  auto isdst = tm1.tm_isdst;
+  auto l_isdst = tm1.tm_isdst;
+  if (isdst)
+    *isdst = l_isdst;
   GMTIME_R(&tloc, &tm1);
-  tm1.tm_isdst = isdst;
+  tm1.tm_isdst = l_isdst;
   time_t t2 = mktime(&tm1);
 
+  return tloc - t2;
+}
+
+static inline unsigned DiffBetweenPragueAndLocalTime(const time_t * when = nullptr)
+{
+  int isdst = -1;
+  auto diff =  DiffBetweenUtcAndLocalTime(when, &isdst);
   // Note: Prague(Czech) is in Central Europe Time -> CET or CEST == UTC+1 or UTC+2 == +3600 or +7200
-  return tloc - t2 - (isdst > 0 ? 7200 : 3600);
+  return diff - (isdst > 0 ? 7200 : 3600);
 }
 
 Data::Data(Configuration cfg)
@@ -173,12 +182,15 @@ bool Data::LoadEPGJob()
   {
     if (KeepAlive() && max_epg > m_iLastEnd)
     {
-      LoadEPG(m_iLastEnd, max_epg - m_iLastEnd <= 3600);
+      auto start = m_iLastEnd + DiffBetweenUtcAndLocalTime(&m_iLastEnd);
+      LoadEPG(start - (start % 86400) - DiffBetweenUtcAndLocalTime(&start), false);
       updated = true;
     }
     if (KeepAlive() && min_epg < m_iLastStart)
     {
-      LoadEPG(m_iLastStart - 86400, false);
+      auto start = m_iLastStart - 86400;
+      start += DiffBetweenPragueAndLocalTime(&start);
+      LoadEPG(start - (start % 86400) - DiffBetweenUtcAndLocalTime(&start), false);
       updated = true;
     }
   }
@@ -358,7 +370,7 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
 
   Json::Value root;
 
-  if (!m_manager.getEpg(iStart, bSmallStep, ChannelsList(), root))
+  if (!m_manager.getEpg(iStart, bSmallStep, std::string() /*ChannelsList()*/, root))
   {
     XBMC->Log(ADDON::LOG_NOTICE, "Cannot parse EPG data. EPG not loaded.");
     m_bEGPLoaded = true;
@@ -372,17 +384,14 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
 
   decltype (m_channels) channels;
   decltype (m_epg) epg;
-  time_t min_epg, max_epg;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     channels = m_channels;
     epg = m_epg;
-    min_epg = m_epgMinTime;
-    max_epg = m_epgMaxTime;
+    // extend min/max (if needed)
+    m_epgMinTime = std::min(m_epgMinTime, m_iLastStart);
+    m_epgMaxTime = std::max(m_epgMaxTime, m_iLastEnd);
   }
-  // narrow the loaded time info (if needed)
-  m_iLastStart = std::max(m_iLastStart, min_epg);
-  m_iLastEnd = std::min(m_iLastEnd, max_epg);
 
   auto epg_copy = std::make_shared<epg_container_t>(*epg);
 
@@ -405,9 +414,6 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
 
         const time_t start_time = ParseDateTime(epgEntry.get("startTime", "").asString());
         const time_t end_time = ParseDateTime(epgEntry.get("endTime", "").asString());
-        // skip unneeded EPGs
-        if (start_time > max_epg || end_time < min_epg)
-          continue;
         EpgEntry iptventry;
         iptventry.iBroadcastId = start_time; // unique id for channel (even if time_t is wider, int should be enough for short period of time)
         iptventry.iGenreType = 0;
