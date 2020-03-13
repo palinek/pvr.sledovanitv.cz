@@ -28,7 +28,7 @@
 #define sledovanitcz_ApiManager_h
 
 #include <string>
-#include <map>
+#include <vector>
 #include <memory>
 
 namespace Json
@@ -39,7 +39,7 @@ namespace Json
 namespace sledovanitvcz
 {
 
-typedef std::map<std::string, std::string> ApiParamMap;
+typedef std::vector<std::tuple<std::string, std::string> > ApiParams_t;
 
 class ApiManager
 {
@@ -84,9 +84,9 @@ private:
   static bool isSuccess(const std::string &response, Json::Value & root);
   static bool isSuccess(const std::string &response);
 
-  std::string buildQueryString(const ApiParamMap & paramMap, bool putSessionVar) const;
-  std::string call(const std::string & urlPath, const ApiParamMap & paramsMap, bool putSessionVar) const;
-  std::string apiCall(const std::string &function, const ApiParamMap & paramsMap, bool putSessionVar = true) const;
+  std::string buildQueryString(const ApiParams_t & paramMap, bool putSessionVar) const;
+  std::string call(const std::string & urlPath, const ApiParams_t & paramsMap, bool putSessionVar) const;
+  std::string apiCall(const std::string &function, const ApiParams_t & paramsMap, bool putSessionVar = true) const;
 
   static const std::string API_URL;
   static const std::string TIMESHIFTINFO_URL;
@@ -95,6 +95,7 @@ private:
   const std::string m_userPassword;
   const std::string m_overridenMac;
   const std::string m_product;
+  std::string m_serial;
   std::string m_deviceId;
   std::string m_password;
   bool m_pinUnlocked;
