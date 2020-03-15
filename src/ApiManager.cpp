@@ -259,7 +259,7 @@ bool ApiManager::isSuccess(const std::string &response)
   return isSuccess(response, root);
 }
 
-bool ApiManager::pairDevice()
+bool ApiManager::pairDevice(Json::Value & root)
 {
   bool new_pairing = false;
   std::string pairJson = readPairFile();
@@ -274,7 +274,6 @@ bool ApiManager::pairDevice()
   m_serial = picosha2::hash256_hex_string(macAddr);
 
 
-  Json::Value root;
   if (pairJson.empty() || !isSuccess(pairJson, root)
       || root.get("userName", "").asString() != m_userName
       || root.get("serial", "").asString() != m_serial
@@ -333,9 +332,7 @@ bool ApiManager::pairDevice()
       // add the userName to written json
       root["userName"] = m_userName;
       root["serial"] = m_serial;
-      std::ostringstream os;
-      os << root;
-      createPairFile(os.str());
+      createPairFile(root);
     }
     return paired;
   }
@@ -350,9 +347,10 @@ bool ApiManager::pairDevice()
 bool ApiManager::login()
 {
   m_pinUnlocked = false;
+  Json::Value pairing_root;
   if (m_deviceId.empty() && m_password.empty())
   {
-    if (!pairDevice())
+    if (!pairDevice(pairing_root))
     {
       XBMC->Log(ADDON::LOG_ERROR, "Cannot pair device");
       return false;
@@ -388,7 +386,9 @@ bool ApiManager::login()
   {
     m_deviceId.clear();
     m_password.clear();
-    createPairFile(std::string{}); // truncate any "old" pairing response
+    // change userName in stored pairing response to "re-pair" this device
+    pairing_root["userName"] = "";
+    createPairFile(pairing_root);
   }
 
   std::atomic_store(&m_sessionId, std::make_shared<const std::string>(std::move(new_session_id)));
@@ -578,13 +578,16 @@ std::string ApiManager::readPairFile()
   return strContent;
 }
 
-void ApiManager::createPairFile(const std::string &content)
+void ApiManager::createPairFile(Json::Value & contentRoot)
 {
   std::string url = GetUserFilePath(PAIR_FILE);
 
   void *fileHandle = XBMC->OpenFileForWrite(url.c_str(), true);
   if (fileHandle)
   {
+    std::ostringstream os;
+    os << contentRoot;
+    const std::string & content = os.str();
     XBMC->WriteFile(fileHandle, content.c_str(), content.length());
     XBMC->CloseFile(fileHandle);
   }
