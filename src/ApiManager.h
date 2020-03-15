@@ -59,7 +59,7 @@ public:
       , const std::string & overridenMac
       , const std::string & product);
 
-  bool pairDevice();
+  bool pairDevice(Json::Value & root);
   bool login();
   bool pinUnlock(const std::string & pin);
   bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root);
@@ -80,7 +80,7 @@ public:
 private:
   static std::string urlEncode(const std::string &str);
   static std::string readPairFile();
-  static void createPairFile(const std::string &content);
+  static void createPairFile(Json::Value & contentRoot);
   static bool isSuccess(const std::string &response, Json::Value & root);
   static bool isSuccess(const std::string &response);
 
