@@ -226,6 +226,9 @@ void Data::ReleaseUnneededEPG()
         // notify about the epg change...and delete it
         EPG_TAG tag;
         memset(&tag, 0, sizeof(EPG_TAG));
+        tag.iSeriesNumber = EPG_TAG_INVALID_SERIES_EPISODE;
+        tag.iEpisodeNumber = EPG_TAG_INVALID_SERIES_EPISODE;
+        tag.iEpisodePartNumber = EPG_TAG_INVALID_SERIES_EPISODE;
         tag.iUniqueBroadcastId = entry.iBroadcastId;
         tag.iUniqueChannelId = entry.iChannelId;
         PVR->EpgEventStateChange(&tag, EPG_EVENT_DELETED);
@@ -434,6 +437,9 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
         // notify about the epg change...and store it
         EPG_TAG tag;
         memset(&tag, 0, sizeof(EPG_TAG));
+        tag.iSeriesNumber = EPG_TAG_INVALID_SERIES_EPISODE;
+        tag.iEpisodeNumber = EPG_TAG_INVALID_SERIES_EPISODE;
+        tag.iEpisodePartNumber = EPG_TAG_INVALID_SERIES_EPISODE;
 
         tag.iUniqueBroadcastId  = iptventry.iBroadcastId;
         tag.iUniqueChannelId    = iptventry.iChannelId;
@@ -1046,6 +1052,8 @@ PVR_ERROR Data::GetRecordings(ADDON_HANDLE handle)
   {
     PVR_RECORDING xbmcRecord;
     memset(&xbmcRecord, 0, sizeof(PVR_RECORDING));
+    xbmcRecord.iSeriesNumber = PVR_RECORDING_INVALID_SERIES_EPISODE;
+    xbmcRecord.iEpisodeNumber = PVR_RECORDING_INVALID_SERIES_EPISODE;
 
     strAssign(xbmcRecord.strRecordingId, rec.strRecordId);
     strAssign(xbmcRecord.strTitle, rec.strTitle);
