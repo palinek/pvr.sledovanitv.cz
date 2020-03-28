@@ -59,7 +59,6 @@ public:
       , const std::string & overridenMac
       , const std::string & product);
 
-  bool pairDevice(Json::Value & root);
   bool login();
   bool pinUnlock(const std::string & pin);
   bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root);
@@ -87,6 +86,8 @@ private:
   std::string buildQueryString(const ApiParams_t & paramMap, bool putSessionVar) const;
   std::string call(const std::string & urlPath, const ApiParams_t & paramsMap, bool putSessionVar) const;
   std::string apiCall(const std::string &function, const ApiParams_t & paramsMap, bool putSessionVar = true) const;
+  bool pairDevice(Json::Value & root);
+  bool deletePairing(const Json::Value & root);
 
   static const std::string API_URL;
   static const std::string TIMESHIFTINFO_URL;

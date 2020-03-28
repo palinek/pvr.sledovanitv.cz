@@ -259,6 +259,31 @@ bool ApiManager::isSuccess(const std::string &response)
   return isSuccess(response, root);
 }
 
+bool ApiManager::deletePairing(const Json::Value & root)
+{
+  // try to delete pairing
+  const std::string old_dev_id = root.get("deviceId", "").asString();
+  if (old_dev_id.empty())
+    return true; // no previous pairing
+
+  const std::string old_password = root.get("password", "").asString();
+  ApiParams_t params;
+  params.emplace_back("deviceId", old_dev_id);
+  params.emplace_back("password", old_password);
+  params.emplace_back("unit", "default");
+  const std::string response = apiCall("delete-pairing", params, false);
+  Json::Value del_root;
+  if (isSuccess(response, del_root)
+      || (del_root.get("error", "").asString() == "no device")
+      )
+  {
+    XBMC->Log(ADDON::LOG_NOTICE, "Previous pairing(deviceId:%s) deleted (or no such device)", old_dev_id.c_str());
+    return true;
+  }
+
+  return false;
+}
+
 bool ApiManager::pairDevice(Json::Value & root)
 {
   bool new_pairing = false;
@@ -280,16 +305,8 @@ bool ApiManager::pairDevice(Json::Value & root)
       )
   {
     // remove pairing if any exising
-    const std::string old_dev_id = root.get("deviceId", "").asString();
-    const std::string old_password = root.get("password", "").asString();
-    if (!old_dev_id.empty())
-    {
-      ApiParams_t params_del;
-      params_del.emplace_back("deviceId", old_dev_id);
-      params_del.emplace_back("password", old_password);
-      params_del.emplace_back("unit", "default");
-      isSuccess(apiCall("delete-pairing", params_del, false));
-    }
+    if (!deletePairing(root))
+      return false;
 
     new_pairing = true;
     ApiParams_t params;
@@ -367,7 +384,8 @@ bool ApiManager::login()
   Json::Value root;
 
   std::string new_session_id;
-  if (isSuccess(apiCall("device-login", param, false), root))
+  const std::string response = apiCall("device-login", param, false);
+  if (isSuccess(response, root))
   {
     new_session_id = root.get("PHPSESSID", "").asString();
 
@@ -379,6 +397,10 @@ bool ApiManager::login()
     {
       XBMC->Log(ADDON::LOG_NOTICE, "Device logged in. Session ID: %s", new_session_id.c_str());
     }
+  } else if (response.empty()) {
+    XBMC->Log(ADDON::LOG_NOTICE, "No login response. Is something wrong with network or remote servers?");
+    // don't do anything, let the state as is to give it another try
+    return false;
   }
 
   const bool success = !new_session_id.empty();
