@@ -716,7 +716,6 @@ bool Data::LoadPlayList(void)
     m_channels = std::move(new_channels);
     m_groups = std::move(new_groups);
     channels_loaded = m_bChannelsLoaded;
-    m_bChannelsLoaded = true;
   }
   m_waitCond.notify_all();
   if (channels_loaded)
@@ -775,6 +774,10 @@ PVR_ERROR Data::GetChannels(ADDON_HANDLE handle, bool bRadio)
     PVR->TransferChannelEntry(handle, &xbmcChannel);
   }
 
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    m_bChannelsLoaded = true;
+  }
   return PVR_ERROR_NO_ERROR;
 }
 
