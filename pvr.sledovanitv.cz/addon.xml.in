@@ -9,15 +9,15 @@
     point="xbmc.pvrclient"
     library_@PLATFORM@="@LIBRARY_FILENAME@"/>
   <extension point="xbmc.addon.metadata">
-    <summary lang="en">Kodi's frontend for sledovanitv.cz, unofficial</summary>
-    <summary lang="cs">Kodi frontend pro sledovanitv.cz, neoficiální</summary>
-    <summary lang="sk">Kodi frontend pre sledovanitv.cz, neoficiálny</summary>
-    <description lang="en">PVR Client for sledovanitv.cz. Supports stream of live TV/Radio, recordings and EPG. This client is not developed nor officially supported by sledovanitv.cz.</description>
-    <description lang="cs">PVR klient pro službu sledovanitv.cz. Podporuje živé vysílání TV/rádia, nahrávky a EPG. Tento klient není vyvíjen ani oficiálne podporován ze strany sledovanitv.cz.</description>
-    <description lang="sk">PVR klient pre službu sledovanitv.cz. Podporuje živé vysielanie TV/rádia, nahrávky a EPG. Tento klient nie je vyvíjaný ani oficiálne podporovaný zo strany sledovanitv.cz.</description>
-    <disclaimer lang="en">This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY. The authors are in no way responsible for failed playings, incorrect EPG times, wasted hours, or any other undesirable effects.</disclaimer>
-    <disclaimer lang="cs">Tento program je rozšiřován v naději, že bude užitečný, avšak BEZ JAKÉKOLIV ZÁRUKY. Autoři nejsou žádným způsobem zodpovědní za selhání při nahrávání, neplatné časovače, ztracený čas, či jakékoliv jiné nežádoucí události...</disclaimer>
-    <disclaimer lang="sk">Tento program je rozširovaný v nádeji, že bude užitočný, avšak BEZ AKEJKOĽVEK ZÁRUKY. Autori žiadnym spôsobom nenesú zodpovednosť za zlyhanie pri nahrávaní, neplatné časovače, stratený čas, či akékoľvek iné nežiadúce dopady...</disclaimer>
+    <summary lang="en_GB">Kodi's frontend for sledovanitv.cz, unofficial</summary>
+    <summary lang="cs_CZ">Kodi frontend pro sledovanitv.cz, neoficiální</summary>
+    <summary lang="sk_SK">Kodi frontend pre sledovanitv.cz, neoficiálny</summary>
+    <description lang="en_GB">PVR Client for sledovanitv.cz. Supports stream of live TV/Radio, recordings and EPG. This client is not developed nor officially supported by sledovanitv.cz.</description>
+    <description lang="cs_CZ">PVR klient pro službu sledovanitv.cz. Podporuje živé vysílání TV/rádia, nahrávky a EPG. Tento klient není vyvíjen ani oficiálne podporován ze strany sledovanitv.cz.</description>
+    <description lang="sk_SK">PVR klient pre službu sledovanitv.cz. Podporuje živé vysielanie TV/rádia, nahrávky a EPG. Tento klient nie je vyvíjaný ani oficiálne podporovaný zo strany sledovanitv.cz.</description>
+    <disclaimer lang="en_GB">This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY. The authors are in no way responsible for failed playings, incorrect EPG times, wasted hours, or any other undesirable effects.</disclaimer>
+    <disclaimer lang="cs_CZ">Tento program je rozšiřován v naději, že bude užitečný, avšak BEZ JAKÉKOLIV ZÁRUKY. Autoři nejsou žádným způsobem zodpovědní za selhání při nahrávání, neplatné časovače, ztracený čas, či jakékoliv jiné nežádoucí události...</disclaimer>
+    <disclaimer lang="sk_SK">Tento program je rozširovaný v nádeji, že bude užitočný, avšak BEZ AKEJKOĽVEK ZÁRUKY. Autori žiadnym spôsobom nenesú zodpovednosť za zlyhanie pri nahrávaní, neplatné časovače, stratený čas, či akékoľvek iné nežiadúce dopady...</disclaimer>
     <platform>@PLATFORM@</platform>
     <assets>
       <icon>resources/logo.png</icon>
