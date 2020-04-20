@@ -1246,7 +1246,7 @@ properties_t Data::GetStreamProperties(const std::string & url, const std::strin
   props[PVR_STREAM_PROPERTY_STREAMURL] = url;
   if (m_useAdaptive && 0 < ADAPTIVE_TYPES.count(streamType))
   {
-    props[PVR_STREAM_PROPERTY_INPUTSTREAMADDON] = "inputstream.adaptive";
+    props[PVR_STREAM_PROPERTY_INPUTSTREAM] = "inputstream.adaptive";
     props["inputstream.adaptive.manifest_type"] = streamType;
   }
   if (isLive)
