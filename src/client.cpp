@@ -258,7 +258,7 @@ void ADDON_Announce(const char *flag, const char *sender, const char *message, c
 /***********************************************************
  * PVR Client AddOn specific public library functions
  ***********************************************************/
-PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
+PVR_ERROR GetCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
 {
   XBMC->Log(LOG_DEBUG, "%s", __FUNCTION__);
   pCapabilities->bSupportsEPG             = true;
