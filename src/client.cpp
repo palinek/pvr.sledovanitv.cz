@@ -47,6 +47,7 @@ using namespace ADDON;
 
 ADDON_STATUS   m_CurStatus      = ADDON_STATUS_UNKNOWN;
 static std::shared_ptr<sledovanitvcz::Data> m_data;
+bool m_bLivePlayback = false;
 
 /* User adjustable settings are saved here.
  * Default values are defined inside client.h
@@ -357,7 +358,9 @@ PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* propert
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, false), properties, iPropertiesCount);
+  m_bLivePlayback = false;
+
+  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, m_bLivePlayback), properties, iPropertiesCount);
 }
 
 int GetChannelsAmount(void)
@@ -389,7 +392,9 @@ PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, true), properties, iPropertiesCount);
+  m_bLivePlayback = true;
+
+  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, m_bLivePlayback), properties, iPropertiesCount);
 }
 
 int GetChannelGroupsAmount(void)
@@ -464,7 +469,9 @@ PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, false), properties, iPropertiesCount);
+  m_bLivePlayback = false;
+
+  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, m_bLivePlayback), properties, iPropertiesCount);
 }
 
 /** TIMER FUNCTIONS */
@@ -596,7 +603,7 @@ bool CanPauseStream(void)
 
 bool IsRealTimeStream()
 {
-  return true;
+  return m_bLivePlayback;
 }
 
 const char *GetBackendHostname(void)
