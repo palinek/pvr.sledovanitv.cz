@@ -189,7 +189,7 @@ bool Data::LoadEPGJob()
     if (KeepAlive() && min_epg < m_iLastStart)
     {
       time_t start = m_iLastStart - 86400;
-      start += DiffBetweenPragueAndLocalTime(&start);
+      start += DiffBetweenUtcAndLocalTime(&start);
       LoadEPG(start - (start % 86400) - DiffBetweenUtcAndLocalTime(&start), false);
       updated = true;
     }
