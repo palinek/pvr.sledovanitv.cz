@@ -357,7 +357,7 @@ PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG* tag, PVR_NAMED_VALUE* propert
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, false), properties, iPropertiesCount);
+  return FillStreamProperties(data->StreamProperties(stream_url, stream_type, false), properties, iPropertiesCount);
 }
 
 int GetChannelsAmount(void)
@@ -389,7 +389,7 @@ PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, true), properties, iPropertiesCount);
+  return FillStreamProperties(data->StreamProperties(stream_url, stream_type, true), properties, iPropertiesCount);
 }
 
 int GetChannelGroupsAmount(void)
@@ -464,7 +464,7 @@ PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  return FillStreamProperties(data->GetStreamProperties(stream_url, stream_type, false), properties, iPropertiesCount);
+  return FillStreamProperties(data->StreamProperties(stream_url, stream_type, false), properties, iPropertiesCount);
 }
 
 /** TIMER FUNCTIONS */
@@ -596,7 +596,11 @@ bool CanPauseStream(void)
 
 bool IsRealTimeStream()
 {
-  return true;
+  auto data = std::atomic_load(&m_data);
+  if (data)
+    return data->CurrentStreamIsLive();
+
+  return false;
 }
 
 const char *GetBackendHostname(void)

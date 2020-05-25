@@ -113,6 +113,7 @@ Data::Data(Configuration cfg)
   , m_useAdaptive{cfg.useAdaptive}
   , m_showLockedChannels{cfg.showLockedChannels}
   , m_showLockedOnlyPin{cfg.showLockedOnlyPin}
+  , m_currentStreamIsLive{false}
   , m_manager{std::move(cfg.userName), std::move(cfg.password), std::move(cfg.deviceId), std::move(cfg.productId)}
 {
 
@@ -1239,9 +1240,12 @@ bool Data::LoggedIn() const
   return m_manager.loggedIn();
 }
 
-properties_t Data::GetStreamProperties(const std::string & url, const std::string & streamType, bool isLive) const
+properties_t Data::StreamProperties(const std::string & url, const std::string & streamType, bool isLive)
 {
   static const std::set<std::string> ADAPTIVE_TYPES = {"mpd", "ism", "hls"};
+
+  m_currentStreamIsLive = isLive;
+
   properties_t props;
   props[PVR_STREAM_PROPERTY_STREAMURL] = url;
   if (m_useAdaptive && 0 < ADAPTIVE_TYPES.count(streamType))
@@ -1252,6 +1256,11 @@ properties_t Data::GetStreamProperties(const std::string & url, const std::strin
   if (isLive)
     props[PVR_STREAM_PROPERTY_ISREALTIMESTREAM] = "true";
   return props;
+}
+
+bool Data::CurrentStreamIsLive() const
+{
+  return m_currentStreamIsLive;
 }
 
 std::string Data::ChannelsList() const

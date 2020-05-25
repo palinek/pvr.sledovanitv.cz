@@ -182,7 +182,8 @@ public:
   PVR_ERROR DeleteRecord(int iRecordId);
   PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed);
   bool LoggedIn() const;
-  properties_t GetStreamProperties(const std::string & url, const std::string & streamType, bool isLive) const;
+  properties_t StreamProperties(const std::string & url, const std::string & streamType, bool isLive);
+  bool CurrentStreamIsLive() const;
 
 protected:
   static int ParseDateTime(std::string strDate);
@@ -242,6 +243,9 @@ private:
   bool m_useAdaptive;
   bool m_showLockedChannels;
   bool m_showLockedOnlyPin;
+
+  // data used only by client(kodi) calling thread
+  bool m_currentStreamIsLive;
 
   ApiManager                        m_manager;
 };
