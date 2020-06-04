@@ -8,7 +8,7 @@
     <import addon="inputstream.adaptive" minversion="2.5.5" optional="true"/>
   </requires>
   <extension
-    point="xbmc.pvrclient"
+    point="kodi.pvrclient"
     library_@PLATFORM@="@LIBRARY_FILENAME@"/>
   <extension point="xbmc.addon.metadata">
     <summary lang="en_GB">Kodi's frontend for sledovanitv.cz, unofficial</summary>
