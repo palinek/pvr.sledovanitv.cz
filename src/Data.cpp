@@ -36,6 +36,9 @@
 
 #include "Data.h"
 #include "CallLimiter.hh"
+#include "kodi/General.h"
+#include "kodi/Filesystem.h"
+#include "kodi/gui/dialogs/Numeric.h"
 
 #if defined(TARGET_WINDOWS)
 # define LOCALTIME_R(src, dst) localtime_s(dst, src)
@@ -47,17 +50,6 @@
 
 namespace sledovanitvcz
 {
-
-template <int N> void strAssign(char (&dst)[N], const std::string & src)
-{
-  strncpy(dst, src.c_str(), N - 1);
-  dst[N - 1] = '\0'; // just to be sure
-}
-
-static void xbmcStrFree(char * str)
-{
-  XBMC->FreeString(str);
-}
 
 static unsigned DiffBetweenUtcAndLocalTime(const time_t * when = nullptr, int * isdst = nullptr)
 {
@@ -87,7 +79,7 @@ static inline unsigned DiffBetweenPragueAndLocalTime(const time_t * when = nullp
   return diff - (isdst > 0 ? 7200 : 3600);
 }
 
-Data::Data(Configuration cfg)
+Data::Data()
   : m_bKeepAlive{true}
   , m_bLoadRecordings{true}
   , m_bChannelsLoaded{false}
@@ -100,21 +92,14 @@ Data::Data(Configuration cfg)
   , m_recordingRecordedDuration{0}
   , m_epgMinTime{time(nullptr)}
   , m_epgMaxTime{time(nullptr) + 3600}
-  , m_epgMaxDays{cfg.epgMaxDays}
+  , m_epgMaxDays{EpgMaxDays()}
   , m_bEGPLoaded{false}
   , m_iLastStart{0}
   , m_iLastEnd{0}
-  , m_streamQuality{static_cast<ApiManager::StreamQuality_t>(cfg.streamQuality)}
-  , m_fullChannelEpgRefresh{cfg.fullChannelEpgRefresh}
-  , m_loadingsRefresh{cfg.loadingsRefresh}
-  , m_keepAliveDelay{cfg.keepAliveDelay}
-  , m_epgCheckDelay{cfg.epgCheckDelay}
-  , m_useH265{cfg.useH265}
-  , m_useAdaptive{cfg.useAdaptive}
-  , m_showLockedChannels{cfg.showLockedChannels}
-  , m_showLockedOnlyPin{cfg.showLockedOnlyPin}
-  , m_currentStreamIsLive{false}
-  , m_manager{std::move(cfg.userName), std::move(cfg.password), std::move(cfg.deviceId), std::move(cfg.productId)}
+  , m_manager{kodi::GetSettingString("userName"),
+              kodi::GetSettingString("password"),
+              kodi::GetSettingString("deviceId"),
+              kodi::GetSettingString("productId")}
 {
 
   SetEPGTimeFrame(m_epgMaxDays);
@@ -151,7 +136,7 @@ void Data::SetLoadRecordings()
 
 void Data::TriggerFullRefresh()
 {
-  XBMC->Log(LOG_INFO, "%s triggering channels/EGP full refresh", __FUNCTION__);
+  kodi::Log(ADDON_LOG_INFO, "%s triggering channels/EGP full refresh", __FUNCTION__);
   m_iLastEnd = 0;
   m_iLastStart = 0;
 
@@ -166,7 +151,7 @@ void Data::TriggerFullRefresh()
 
 bool Data::LoadEPGJob()
 {
-  XBMC->Log(LOG_INFO, "%s will check if EGP loading needed", __FUNCTION__);
+  kodi::Log(ADDON_LOG_INFO, "%s will check if EGP loading needed", __FUNCTION__);
   time_t min_epg, max_epg;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
@@ -211,7 +196,7 @@ void Data::ReleaseUnneededEPG()
     epg = m_epg;
   }
   auto epg_copy = std::make_shared<epg_container_t>();
-  XBMC->Log(LOG_DEBUG, "%s min_epg=%s max_epg=%s", __FUNCTION__, ApiManager::formatTime(min_epg).c_str(), ApiManager::formatTime(max_epg).c_str());
+  kodi::Log(ADDON_LOG_DEBUG, "%s min_epg=%s max_epg=%s", __FUNCTION__, ApiManager::formatTime(min_epg).c_str(), ApiManager::formatTime(max_epg).c_str());
 
   for (const auto & epg_channel : *epg)
   {
@@ -222,17 +207,16 @@ void Data::ReleaseUnneededEPG()
       const EpgEntry & entry = entry_i->second;
       if (entry_i->second.startTime > max_epg || entry_i->second.endTime < min_epg)
       {
-        XBMC->Log(LOG_DEBUG, "Removing TV show: %s - %s, start=%s end=%s", epg_channel.second.strName.c_str(), entry.strTitle.c_str()
+        kodi::Log(ADDON_LOG_DEBUG, "Removing TV show: %s - %s, start=%s end=%s", epg_channel.second.strName.c_str(), entry.strTitle.c_str()
             , ApiManager::formatTime(entry.startTime).c_str(), ApiManager::formatTime(entry.endTime).c_str());
         // notify about the epg change...and delete it
-        EPG_TAG tag;
-        memset(&tag, 0, sizeof(EPG_TAG));
-        tag.iSeriesNumber = EPG_TAG_INVALID_SERIES_EPISODE;
-        tag.iEpisodeNumber = EPG_TAG_INVALID_SERIES_EPISODE;
-        tag.iEpisodePartNumber = EPG_TAG_INVALID_SERIES_EPISODE;
-        tag.iUniqueBroadcastId = entry.iBroadcastId;
-        tag.iUniqueChannelId = entry.iChannelId;
-        PVR->EpgEventStateChange(&tag, EPG_EVENT_DELETED);
+        kodi::addon::PVREPGTag tag;
+        tag.SetSeriesNumber(EPG_TAG_INVALID_SERIES_EPISODE);
+        tag.SetEpisodeNumber(EPG_TAG_INVALID_SERIES_EPISODE);
+        tag.SetEpisodePartNumber(EPG_TAG_INVALID_SERIES_EPISODE);
+        tag.SetUniqueBroadcastId(entry.iBroadcastId);
+        tag.SetUniqueChannelId(entry.iChannelId);
+        EpgEventStateChange(tag, EPG_EVENT_DELETED);
 
         to_delete.push_back(entry_i->first);
       }
@@ -273,7 +257,7 @@ void Data::KeepAliveJob()
   if (!KeepAlive())
     return;
 
-  XBMC->Log(LOG_DEBUG, "keepAlive:: trigger");
+  kodi::Log(ADDON_LOG_DEBUG, "keepAlive:: trigger");
   if (!m_manager.keepAlive())
   {
     LoginLoop();
@@ -288,9 +272,15 @@ void Data::LoginLoop()
     if (0 >= login_delay)
     {
       if (m_manager.login())
+      {
+        ConnectionStateChange("Connected", PVR_CONNECTION_STATE_CONNECTED, "");
         should_try = false;
+      }
       else
+      {
+        ConnectionStateChange("Disconnected", PVR_CONNECTION_STATE_DISCONNECTED, "");
         login_delay = 30; // try in 30 seconds
+      }
     }
     std::this_thread::sleep_for(std::chrono::seconds{1});
   }
@@ -304,7 +294,7 @@ bool Data::WaitForChannels() const
 
 void Data::Process(void)
 {
-  XBMC->Log(LOG_DEBUG, "keepAlive:: thread started");
+  kodi::Log(ADDON_LOG_DEBUG, "keepAlive:: thread started");
 
   LoginLoop();
 
@@ -345,7 +335,7 @@ void Data::Process(void)
     // do keep alive call once a time
     work_done |= keep_alive_job.Call();
   }
-  XBMC->Log(LOG_DEBUG, "keepAlive:: thread stopped");
+  kodi::Log(ADDON_LOG_DEBUG, "keepAlive:: thread stopped");
 }
 
 Data::~Data(void)
@@ -355,7 +345,78 @@ Data::~Data(void)
     m_bKeepAlive = false;
   }
   m_thread.join();
-  XBMC->Log(LOG_DEBUG, "%s destructed", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "%s destructed", __FUNCTION__);
+}
+
+ADDON_STATUS Data::Create()
+{
+  kodi::Log(ADDON_LOG_DEBUG, "%s - Creating the PVR sledovanitv.cz (unofficial)", __FUNCTION__);
+
+  if (!kodi::vfs::DirectoryExists(UserPath()))
+  {
+    kodi::vfs::CreateDirectory(UserPath());
+  }
+
+  m_streamQuality = kodi::GetSettingEnum<ApiManager::StreamQuality_t>("streamQuality", ApiManager::SQ_DEFAULT);
+  m_fullChannelEpgRefresh = kodi::GetSettingInt("fullChannelEpgRefresh", 24) * 3600; // make it seconds
+  m_loadingsRefresh = kodi::GetSettingInt("loadingsRefresh", 60);
+  m_keepAliveDelay = kodi::GetSettingInt("keepAliveDelay", 20);
+  m_epgCheckDelay = kodi::GetSettingInt("epgCheckDelay", 1) * 60; // make it seconds
+  m_useH265 = kodi::GetSettingBoolean("useH265", false);
+  m_useAdaptive = kodi::GetSettingBoolean("useAdaptive", false);
+  m_showLockedChannels = kodi::GetSettingBoolean("showLockedChannels", true);
+  m_showLockedOnlyPin = kodi::GetSettingBoolean("showLockedOnlyPin", true);
+
+  return ADDON_STATUS_OK;
+}
+
+ADDON_STATUS Data::SetSetting(const std::string & settingName, const kodi::CSettingValue & settingValue)
+{
+  // just force our data to be re-created
+  return ADDON_STATUS_NEED_RESTART;
+}
+
+PVR_ERROR Data::GetCapabilities(kodi::addon::PVRCapabilities& capabilities)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "%s", __FUNCTION__);
+
+  capabilities.SetSupportsEPG(true);
+  capabilities.SetSupportsTV(true);
+  capabilities.SetSupportsRadio(true);
+  capabilities.SetSupportsRecordings(true);
+  capabilities.SetSupportsRecordingsUndelete(false);
+  capabilities.SetSupportsTimers(true);
+  capabilities.SetSupportsChannelGroups(true);
+  capabilities.SetSupportsChannelScan(false);
+  capabilities.SetSupportsChannelSettings(false);
+  capabilities.SetHandlesInputStream(false);
+  capabilities.SetHandlesDemuxing(false);
+  capabilities.SetSupportsRecordingPlayCount(false);
+  capabilities.SetSupportsLastPlayedPosition(false);
+  capabilities.SetSupportsRecordingEdl(false);
+  capabilities.SetSupportsRecordingsRename(false);
+  capabilities.SetSupportsRecordingsLifetimeChange(false);
+  capabilities.SetSupportsDescrambleInfo(false);
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR Data::GetBackendName(std::string& name)
+{
+  name = "PVR sledovanitv.cz (unofficial)";
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR Data::GetBackendVersion(std::string& version)
+{
+  version = "";
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR Data::GetConnectionString(std::string& connection)
+{
+  connection = "connected";
+  return PVR_ERROR_NO_ERROR;
 }
 
 bool Data::KeepAlive()
@@ -367,7 +428,7 @@ bool Data::KeepAlive()
 bool Data::LoadEPG(time_t iStart, bool bSmallStep)
 {
   const int step = bSmallStep ? 3600 : 86400;
-  XBMC->Log(LOG_DEBUG, "%s last start %s, start %s, last end %s, end %s", __FUNCTION__, ApiManager::formatTime(m_iLastStart).c_str()
+  kodi::Log(ADDON_LOG_DEBUG, "%s last start %s, start %s, last end %s, end %s", __FUNCTION__, ApiManager::formatTime(m_iLastStart).c_str()
       , ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(m_iLastEnd).c_str(), ApiManager::formatTime(iStart + step).c_str());
   if (m_bEGPLoaded && m_iLastStart != 0 && iStart >= m_iLastStart && iStart + step <= m_iLastEnd)
     return false;
@@ -376,7 +437,7 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
 
   if (!m_manager.getEpg(iStart, bSmallStep, std::string() /*ChannelsList()*/, root))
   {
-    XBMC->Log(LOG_INFO, "Cannot parse EPG data. EPG not loaded.");
+    kodi::Log(ADDON_LOG_INFO, "Cannot parse EPG data. EPG not loaded.");
     m_bEGPLoaded = true;
     return false;
   }
@@ -432,27 +493,26 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
         iptventry.availableTimeshift = availability == "timeshift" || availability == "pvr";
         iptventry.strRecordId = epgEntry["recordId"].asString();
 
-        XBMC->Log(LOG_DEBUG, "Loading TV show: %s - %s, start=%s(epoch=%llu)", strChId.c_str(), iptventry.strTitle.c_str()
+        kodi::Log(ADDON_LOG_DEBUG, "Loading TV show: %s - %s, start=%s(epoch=%llu)", strChId.c_str(), iptventry.strTitle.c_str()
             , epgEntry.get("startTime", "").asString().c_str(), static_cast<long long unsigned>(start_time));
 
         // notify about the epg change...and store it
-        EPG_TAG tag;
-        memset(&tag, 0, sizeof(EPG_TAG));
-        tag.iSeriesNumber = EPG_TAG_INVALID_SERIES_EPISODE;
-        tag.iEpisodeNumber = EPG_TAG_INVALID_SERIES_EPISODE;
-        tag.iEpisodePartNumber = EPG_TAG_INVALID_SERIES_EPISODE;
+        kodi::addon::PVREPGTag tag;
+        tag.SetSeriesNumber(EPG_TAG_INVALID_SERIES_EPISODE);
+        tag.SetEpisodeNumber(EPG_TAG_INVALID_SERIES_EPISODE);
+        tag.SetEpisodePartNumber(EPG_TAG_INVALID_SERIES_EPISODE);
 
-        tag.iUniqueBroadcastId  = iptventry.iBroadcastId;
-        tag.iUniqueChannelId    = iptventry.iChannelId;
-        tag.strTitle            = strdup(iptventry.strTitle.c_str());
-        tag.startTime           = iptventry.startTime;
-        tag.endTime             = iptventry.endTime;
-        tag.strPlotOutline      = strdup(iptventry.strPlotOutline.c_str());
-        tag.strPlot             = strdup(iptventry.strPlot.c_str());
-        tag.strIconPath         = strdup(iptventry.strIconPath.c_str());
-        tag.iGenreType          = EPG_GENRE_USE_STRING;        //iptventry.iGenreType;
-        tag.iGenreSubType       = 0;                           //iptventry.iGenreSubType;
-        tag.strGenreDescription = strdup(iptventry.strGenreString.c_str());
+        tag.SetUniqueBroadcastId(iptventry.iBroadcastId);
+        tag.SetUniqueChannelId(iptventry.iChannelId);
+        tag.SetTitle(iptventry.strTitle);
+        tag.SetStartTime(iptventry.startTime);
+        tag.SetEndTime(iptventry.endTime);
+        tag.SetPlotOutline(iptventry.strPlotOutline);
+        tag.SetPlot(iptventry.strPlot);
+        tag.SetIconPath(iptventry.strIconPath);
+        tag.SetGenreType(EPG_GENRE_USE_STRING);        //iptventry.iGenreType;
+        tag.SetGenreSubType(0);                        //iptventry.iGenreSubType;
+        tag.SetGenreDescription(iptventry.strGenreString);
 
         auto result = epgChannel.epg.emplace(iptventry.startTime, iptventry);
         bool value_changed = !result.second;
@@ -461,14 +521,7 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
           epgChannel.epg[iptventry.startTime] = std::move(iptventry);
         }
 
-        PVR->EpgEventStateChange(&tag, value_changed ? EPG_EVENT_UPDATED : EPG_EVENT_CREATED);
-
-        free(const_cast<char *>(tag.strTitle));
-        free(const_cast<char *>(tag.strPlotOutline));
-        free(const_cast<char *>(tag.strPlot));
-        free(const_cast<char *>(tag.strIconPath));
-        free(const_cast<char *>(tag.strGenreDescription));
-
+        EpgEventStateChange(tag, value_changed ? EPG_EVENT_UPDATED : EPG_EVENT_CREATED);
       }
     }
   }
@@ -480,7 +533,7 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
   }
 
   m_bEGPLoaded = true;
-  XBMC->Log(LOG_INFO, "EPG Loaded.");
+  kodi::Log(ADDON_LOG_INFO, "EPG Loaded.");
 
   return true;
 }
@@ -506,7 +559,7 @@ bool Data::LoadRecordings()
 
   if (!m_manager.getPvr(root))
   {
-    XBMC->Log(LOG_INFO, "Cannot parse recordings.");
+    kodi::Log(ADDON_LOG_INFO, "Cannot parse recordings.");
     return false;
   }
 
@@ -523,11 +576,10 @@ bool Data::LoadRecordings()
     if (locked != "none")
     {
       //Note: std::make_unique is available from c++14
-      std::unique_ptr<char, decltype (&xbmcStrFree)> loc{XBMC->GetLocalizedString(30201), &xbmcStrFree};
-      directory = loc.get();
+      directory = kodi::GetLocalizedString(30201);
       directory += " - ";
       directory += locked;
-      XBMC->Log(LOG_INFO, "Timer/recording '%s' is locked(%s)", title.c_str(), locked.c_str());
+      kodi::Log(ADDON_LOG_INFO, "Timer/recording '%s' is locked(%s)", title.c_str(), locked.c_str());
     }
     std::string str_ch_id = record.get("channel", "").asString();
     const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&str_ch_id] (const Channel & ch) { return ch.strId == str_ch_id; });
@@ -561,7 +613,7 @@ bool Data::LoadRecordings()
       iptvrecording.strDirectory = std::move(directory);
       iptvrecording.bIsPinLocked = locked == "pin";
 
-      XBMC->Log(LOG_DEBUG, "Loading recording '%s'", iptvrecording.strTitle.c_str());
+      kodi::Log(ADDON_LOG_DEBUG, "Loading recording '%s'", iptvrecording.strTitle.c_str());
 
       new_recordings->push_back(iptvrecording);
     }
@@ -587,7 +639,7 @@ bool Data::LoadRecordings()
       iptvtimer.iLifeTime = (ParseDateTime(record.get("expires", "").asString() + "00:00") - now) / 86400;
       iptvtimer.strDirectory = std::move(directory);
 
-      XBMC->Log(LOG_DEBUG, "Loading timer '%s'", iptvtimer.strTitle.c_str());
+      kodi::Log(ADDON_LOG_DEBUG, "Loading timer '%s'", iptvtimer.strTitle.c_str());
 
       new_timers->push_back(iptvtimer);
     }
@@ -631,13 +683,13 @@ bool Data::LoadRecordings()
     if (changed_r)
     {
       m_recordings = std::move(new_recordings);
-      PVR->TriggerRecordingUpdate();
+      TriggerRecordingUpdate();
     }
 
     if (changed_t)
     {
       m_timers = std::move(new_timers);
-      PVR->TriggerTimerUpdate();
+      TriggerTimerUpdate();
     }
     m_recordingAvailableDuration = available_duration;
     m_recordingRecordedDuration = recorded_duration;
@@ -655,13 +707,13 @@ bool Data::LoadPlayList(void)
 
   if (!m_manager.getPlaylist(m_streamQuality, m_useH265, m_useAdaptive, root))
   {
-    XBMC->Log(LOG_INFO, "Cannot get/parse playlist.");
+    kodi::Log(ADDON_LOG_INFO, "Cannot get/parse playlist.");
     return false;
   }
 
   /*
   std::string qualities = m_manager.getStreamQualities();
-  XBMC->Log(LOG_DEBUG, "Stream qualities: %s", qualities.c_str());
+  kodi::Log(ADDON_LOG_DEBUG, "Stream qualities: %s", qualities.c_str());
   */
 
   //channels
@@ -675,7 +727,7 @@ bool Data::LoadPlayList(void)
     {
       if (!m_showLockedChannels || (m_showLockedOnlyPin && locked != "pin"))
       {
-        XBMC->Log(LOG_INFO, "Skipping locked(%s) channel#%u %s", locked.c_str(), i + 1, channel.get("name", "").asString().c_str());
+        kodi::Log(ADDON_LOG_INFO, "Skipping locked(%s) channel#%u %s", locked.c_str(), i + 1, channel.get("name", "").asString().c_str());
         continue;
       }
     }
@@ -689,7 +741,7 @@ bool Data::LoadPlayList(void)
     iptvchan.strStreamType = channel.get("streamType", "").asString();
     iptvchan.iUniqueId = i + 1;
     iptvchan.iChannelNumber = i + 1;
-    XBMC->Log(LOG_DEBUG, "Channel#%d %s, URL: %s", iptvchan.iUniqueId, iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
+    kodi::Log(ADDON_LOG_DEBUG, "Channel#%d %s, URL: %s", iptvchan.iUniqueId, iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
     iptvchan.strIconPath = channel.get("logoUrl", "").asString();
     iptvchan.bIsRadio = channel.get("type", "").asString() != "tv";
     iptvchan.bIsPinLocked = locked == "pin";
@@ -713,8 +765,8 @@ bool Data::LoadPlayList(void)
     new_groups->push_back(std::move(group));
   }
 
-  XBMC->Log(LOG_INFO, "Loaded %d channels.", new_channels->size());
-  XBMC->QueueNotification(QUEUE_INFO, "%d channels loaded.", new_channels->size());
+  kodi::Log(ADDON_LOG_INFO, "Loaded %d channels.", new_channels->size());
+  kodi::QueueFormattedNotification(QUEUE_INFO, "%d channels loaded.", new_channels->size());
 
 
   bool channels_loaded;
@@ -727,14 +779,14 @@ bool Data::LoadPlayList(void)
   m_waitCond.notify_all();
   if (channels_loaded)
   {
-    PVR->TriggerChannelUpdate();
-    PVR->TriggerChannelGroupsUpdate();
+    TriggerChannelUpdate();
+    TriggerChannelGroupsUpdate();
   }
 
   return true;
 }
 
-int Data::GetChannelsAmount(void)
+PVR_ERROR Data::GetChannelsAmount(int& amount)
 {
   decltype (m_channels) channels;
   {
@@ -742,12 +794,13 @@ int Data::GetChannelsAmount(void)
     channels = m_channels;
   }
 
-  return channels->size();
+  amount = channels->size();
+  return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetChannels(ADDON_HANDLE handle, bool bRadio)
+PVR_ERROR Data::GetChannels(bool radio, kodi::addon::PVRChannelsResultSet& results)
 {
-  XBMC->Log(LOG_DEBUG, "%s %s", __FUNCTION__, bRadio ? "radio" : "tv");
+  kodi::Log(ADDON_LOG_DEBUG, "%s %s", __FUNCTION__, radio ? "radio" : "tv");
   WaitForChannels();
 
   decltype (m_channels) channels;
@@ -756,29 +809,28 @@ PVR_ERROR Data::GetChannels(ADDON_HANDLE handle, bool bRadio)
     channels = m_channels;
   }
 
-  std::vector<PVR_CHANNEL> xbmc_channels;
+  std::vector<kodi::addon::PVRChannel> kodi_channels;
   for (const auto & channel : *channels)
   {
-    if (channel.bIsRadio == bRadio)
+    if (channel.bIsRadio == radio)
     {
-      PVR_CHANNEL xbmcChannel;
-      memset(&xbmcChannel, 0, sizeof(PVR_CHANNEL));
+      kodi::addon::PVRChannel kodiChannel;
 
-      xbmcChannel.iUniqueId         = channel.iUniqueId;
-      xbmcChannel.bIsRadio          = channel.bIsRadio;
-      xbmcChannel.iChannelNumber    = channel.iChannelNumber;
-      strAssign(xbmcChannel.strChannelName, channel.strChannelName);
-      xbmcChannel.iEncryptionSystem = channel.iEncryptionSystem;
-      strAssign(xbmcChannel.strIconPath, channel.strIconPath);
-      xbmcChannel.bIsHidden         = false;
+      kodiChannel.SetUniqueId(channel.iUniqueId);
+      kodiChannel.SetIsRadio(channel.bIsRadio);
+      kodiChannel.SetChannelNumber(channel.iChannelNumber);
+      kodiChannel.SetChannelName(channel.strChannelName);
+      kodiChannel.SetEncryptionSystem(channel.iEncryptionSystem);
+      kodiChannel.SetIconPath(channel.strIconPath);
+      kodiChannel.SetIsHidden(false);
 
-      xbmc_channels.push_back(std::move(xbmcChannel));
+      kodi_channels.push_back(std::move(kodiChannel));
     }
   }
 
-  for (const auto & xbmcChannel : xbmc_channels)
+  for (const auto & kodiChannel : kodi_channels)
   {
-    PVR->TransferChannelEntry(handle, &xbmcChannel);
+    results.Add(kodiChannel);
   }
 
   {
@@ -788,7 +840,26 @@ PVR_ERROR Data::GetChannels(ADDON_HANDLE handle, bool bRadio)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType)
+PVR_ERROR Data::GetChannelStreamProperties(const kodi::addon::PVRChannel& channel, std::vector<kodi::addon::PVRStreamProperty>& properties)
+{
+  std::string streamUrl, streamType;
+  PVR_ERROR ret = GetChannelStreamUrl(channel, streamUrl, streamType);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
+
+  properties = StreamProperties(streamUrl, streamType, true);
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR Data::GetSignalStatus(int channelUid, kodi::addon::PVRSignalStatus& signalStatus)
+{
+  signalStatus.SetAdapterName("sledovanitv.cz");
+  signalStatus.SetAdapterStatus("OK");
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR Data::GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType)
 {
   decltype (m_channels) channels;
   {
@@ -796,10 +867,10 @@ PVR_ERROR Data::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & st
     channels = m_channels;
   }
 
-  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [channel] (const Channel & c) { return c.iUniqueId == channel->iUniqueId; });
+  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [channel] (const Channel & c) { return c.iUniqueId == channel.GetUniqueId(); });
   if (channels->cend() == channel_i)
   {
-    XBMC->Log(LOG_INFO, "%s can't find channel %d", __FUNCTION__, channel->iUniqueId);
+    kodi::Log(ADDON_LOG_INFO, "%s can't find channel %d", __FUNCTION__, channel.GetUniqueId());
     return PVR_ERROR_INVALID_PARAMETERS;
   }
 
@@ -812,19 +883,20 @@ PVR_ERROR Data::GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & st
 
 }
 
-int Data::GetChannelGroupsAmount(void)
+PVR_ERROR Data::GetChannelGroupsAmount(int& amount)
 {
   decltype (m_groups) groups;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     groups = m_groups;
   }
-  return groups->size();
+  amount = groups->size();
+  return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
+PVR_ERROR Data::GetChannelGroups(bool radio, kodi::addon::PVRChannelGroupsResultSet& results)
 {
-  XBMC->Log(LOG_DEBUG, "%s %s", __FUNCTION__, bRadio ? "radio" : "tv");
+  kodi::Log(ADDON_LOG_DEBUG, "%s %s", __FUNCTION__, radio ? "radio" : "tv");
   WaitForChannels();
 
   decltype (m_groups) groups;
@@ -833,32 +905,31 @@ PVR_ERROR Data::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
     groups = m_groups;
   }
 
-  std::vector<PVR_CHANNEL_GROUP> xbmc_groups;
+  std::vector<kodi::addon::PVRChannelGroup> kodi_groups;
   for (const auto & group : *groups)
   {
-    if (group.bRadio == bRadio)
+    if (group.bRadio == radio)
     {
-      PVR_CHANNEL_GROUP xbmcGroup;
-      memset(&xbmcGroup, 0, sizeof(PVR_CHANNEL_GROUP));
+      kodi::addon::PVRChannelGroup kodiGroup;
 
-      xbmcGroup.bIsRadio = bRadio;
-      strAssign(xbmcGroup.strGroupName, group.strGroupName);
+      kodiGroup.SetIsRadio(radio);
+      kodiGroup.SetGroupName(group.strGroupName);
 
-      xbmc_groups.push_back(std::move(xbmcGroup));
+      kodi_groups.push_back(std::move(kodiGroup));
     }
   }
 
-  for (const auto & xbmcGroup : xbmc_groups)
+  for (const auto & kodiGroup : kodi_groups)
   {
-    PVR->TransferChannelGroup(handle, &xbmcGroup);
+    results.Add(kodiGroup);
   }
 
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
+PVR_ERROR Data::GetChannelGroupMembers(const kodi::addon::PVRChannelGroup& group, kodi::addon::PVRChannelGroupMembersResultSet& results)
 {
-  XBMC->Log(LOG_DEBUG, "%s %s", __FUNCTION__, group.strGroupName);
+  kodi::Log(ADDON_LOG_DEBUG, "%s %s", __FUNCTION__, group.GetGroupName().c_str());
   WaitForChannels();
 
   decltype (m_groups) groups;
@@ -869,8 +940,8 @@ PVR_ERROR Data::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GR
     channels = m_channels;
   }
 
-  std::vector<PVR_CHANNEL_GROUP_MEMBER> xbmc_group_members;
-  auto group_i = std::find_if(groups->cbegin(), groups->cend(), [&group] (ChannelGroup const & g) { return g.strGroupName == group.strGroupName; });
+  std::vector<kodi::addon::PVRChannelGroupMember> kodi_group_members;
+  auto group_i = std::find_if(groups->cbegin(), groups->cend(), [&group] (ChannelGroup const & g) { return g.strGroupName == group.GetGroupName(); });
   if (group_i != groups->cend())
   {
     int order = 0;
@@ -880,47 +951,46 @@ PVR_ERROR Data::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GR
         continue;
 
       const Channel &channel = (*channels)[member];
-      PVR_CHANNEL_GROUP_MEMBER xbmcGroupMember;
-      memset(&xbmcGroupMember, 0, sizeof(PVR_CHANNEL_GROUP_MEMBER));
+      kodi::addon::PVRChannelGroupMember kodiGroupMember;
 
-      strncpy(xbmcGroupMember.strGroupName, group.strGroupName, sizeof(xbmcGroupMember.strGroupName) - 1);
-      xbmcGroupMember.iChannelUniqueId = channel.iUniqueId;
-      xbmcGroupMember.iChannelNumber   = ++order;
+      kodiGroupMember.SetGroupName(group.GetGroupName());
+      kodiGroupMember.SetChannelUniqueId(channel.iUniqueId);
+      kodiGroupMember.SetChannelNumber(++order);
 
-      xbmc_group_members.push_back(std::move(xbmcGroupMember));
+      kodi_group_members.push_back(std::move(kodiGroupMember));
     }
   }
-  for (const auto & xbmcGroupMember : xbmc_group_members)
+  for (const auto & kodiGroupMember : kodi_group_members)
   {
-    PVR->TransferChannelGroupMember(handle, &xbmcGroupMember);
+    results.Add(kodiGroupMember);
   }
 
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetEPGForChannel(ADDON_HANDLE handle, int iChannelUid, time_t iStart, time_t iEnd)
+PVR_ERROR Data::GetEPGForChannel(int channelUid, time_t start, time_t end, kodi::addon::PVREPGTagsResultSet& results)
 {
-  XBMC->Log(LOG_DEBUG, "%s %i, from=%s to=%s", __FUNCTION__, iChannelUid, ApiManager::formatTime(iStart).c_str(), ApiManager::formatTime(iEnd).c_str());
+  kodi::Log(ADDON_LOG_DEBUG, "%s %i, from=%s to=%s", __FUNCTION__, channelUid, ApiManager::formatTime(start).c_str(), ApiManager::formatTime(end).c_str());
   std::lock_guard<std::mutex> critical(m_mutex);
   // Note: For future scheduled timers Kodi requests EPG (this function) with
-  // iStart & iEnd as given by the timer timespan. But we don't want to narrow
+  // start & end as given by the timer timespan. But we don't want to narrow
   // our EPG interval in such cases.
-  m_epgMinTime = iStart < m_epgMinTime ? iStart : m_epgMinTime;
-  m_epgMaxTime = iEnd > m_epgMaxTime ? iEnd : m_epgMaxTime;
+  m_epgMinTime = start < m_epgMinTime ? start : m_epgMinTime;
+  m_epgMaxTime = end > m_epgMaxTime ? end : m_epgMaxTime;
   return PVR_ERROR_NO_ERROR;
 }
 
-static PVR_ERROR GetEPGData(const EPG_TAG* tag
+static PVR_ERROR GetEPGData(const kodi::addon::PVREPGTag& tag
     , const channel_container_t * channels
     , const epg_container_t * epg
     , epg_entry_container_t::const_iterator & epg_i
     , bool * isChannelPinLocked = nullptr
     )
 {
-  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [tag] (const Channel & c) { return c.iUniqueId == tag->iUniqueChannelId; });
+  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [tag] (const Channel & c) { return c.iUniqueId == tag.GetUniqueChannelId(); });
   if (channels->cend() == channel_i)
   {
-    XBMC->Log(LOG_INFO, "%s can't find channel %d", __FUNCTION__, tag->iUniqueChannelId);
+    kodi::Log(ADDON_LOG_INFO, "%s can't find channel %d", __FUNCTION__, tag.GetUniqueChannelId());
     return PVR_ERROR_INVALID_PARAMETERS;
   }
   if (isChannelPinLocked)
@@ -928,15 +998,15 @@ static PVR_ERROR GetEPGData(const EPG_TAG* tag
 
   auto ch_epg_i = epg->find(channel_i->strId);
 
-  if (epg->cend() == ch_epg_i || (epg_i = ch_epg_i->second.epg.find(tag->iUniqueBroadcastId)) == ch_epg_i->second.epg.cend())
+  if (epg->cend() == ch_epg_i || (epg_i = ch_epg_i->second.epg.find(tag.GetUniqueBroadcastId())) == ch_epg_i->second.epg.cend())
   {
-    XBMC->Log(LOG_INFO, "%s can't find EPG data for channel %s, time %d", __FUNCTION__, channel_i->strId.c_str(), tag->iUniqueBroadcastId);
+    kodi::Log(ADDON_LOG_INFO, "%s can't find EPG data for channel %s, time %d", __FUNCTION__, channel_i->strId.c_str(), tag.GetUniqueBroadcastId());
     return PVR_ERROR_INVALID_PARAMETERS;
   }
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const
+PVR_ERROR Data::IsEPGTagPlayable(const kodi::addon::PVREPGTag& tag, bool& isPlayable)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -951,11 +1021,11 @@ PVR_ERROR Data::IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  *bIsPlayable = epg_i->second.availableTimeshift && tag->startTime < time(nullptr);
+  isPlayable = epg_i->second.availableTimeshift && tag.GetStartTime() < time(nullptr);
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const
+PVR_ERROR Data::IsEPGTagRecordable(const kodi::addon::PVREPGTag& tag, bool& isRecordable)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -970,11 +1040,22 @@ PVR_ERROR Data::IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) cons
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  *bIsRecordable = epg_i->second.availableTimeshift && !RecordingExists(epg_i->second.strRecordId) && tag->startTime < time(nullptr);
+  isRecordable = epg_i->second.availableTimeshift && !RecordingExists(epg_i->second.strRecordId) && tag.GetStartTime() < time(nullptr);
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType)
+PVR_ERROR Data::GetEPGTagStreamProperties(const kodi::addon::PVREPGTag& tag, std::vector<kodi::addon::PVRStreamProperty>& properties)
+{
+  std::string streamUrl, streamType;
+  PVR_ERROR ret = GetEPGStreamUrl(tag, streamUrl, streamType);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
+
+  properties = StreamProperties(streamUrl, streamType, false);
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR Data::GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string & streamUrl, std::string & streamType)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -1008,7 +1089,7 @@ PVR_ERROR Data::GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std
 
 PVR_ERROR Data::SetEPGTimeFrame(int iDays)
 {
-  XBMC->Log(LOG_DEBUG, "%s iDays=%d", __FUNCTION__, iDays);
+  kodi::Log(ADDON_LOG_DEBUG, "%s iDays=%d", __FUNCTION__, iDays);
   time_t now = time(nullptr);
   std::lock_guard<std::mutex> critical(m_mutex);
   m_epgMinTime = now;
@@ -1034,53 +1115,62 @@ int Data::ParseDateTime(std::string strDate)
   return t - DiffBetweenPragueAndLocalTime(&t);
 }
 
-int Data::GetRecordingsAmount()
+PVR_ERROR Data::GetRecordingsAmount(bool deleted, int& amount)
 {
   decltype (m_recordings) recordings;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     recordings = m_recordings;
   }
-  return recordings->size();
+  amount = recordings->size();
+  return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetRecordings(ADDON_HANDLE handle)
+PVR_ERROR Data::GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet& results)
 {
   decltype (m_recordings) recordings;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     recordings = m_recordings;
   }
-  std::vector<PVR_RECORDING> xbmc_records;
-  auto insert_lambda = [&xbmc_records] (const Recording & rec)
+  std::vector<kodi::addon::PVRRecording> kodi_records;
+  auto insert_lambda = [&kodi_records] (const Recording & rec)
   {
-    PVR_RECORDING xbmcRecord;
-    memset(&xbmcRecord, 0, sizeof(PVR_RECORDING));
-    xbmcRecord.iSeriesNumber = PVR_RECORDING_INVALID_SERIES_EPISODE;
-    xbmcRecord.iEpisodeNumber = PVR_RECORDING_INVALID_SERIES_EPISODE;
+    kodi::addon::PVRRecording kodiRecord;
 
-    strAssign(xbmcRecord.strRecordingId, rec.strRecordId);
-    strAssign(xbmcRecord.strTitle, rec.strTitle);
-    strAssign(xbmcRecord.strDirectory, rec.strDirectory);
-    strAssign(xbmcRecord.strChannelName, rec.strChannelName);
-    xbmcRecord.recordingTime = rec.startTime;
-    strAssign(xbmcRecord.strPlotOutline, rec.strPlotOutline);
-    strAssign(xbmcRecord.strPlot, rec.strPlotOutline);
-    xbmcRecord.iDuration = rec.duration;
-    xbmcRecord.iLifetime = rec.iLifeTime;
-    xbmcRecord.iChannelUid = rec.iChannelUid;
-    xbmcRecord.channelType = rec.bRadio ? PVR_RECORDING_CHANNEL_TYPE_RADIO : PVR_RECORDING_CHANNEL_TYPE_TV;
+    kodiRecord.SetRecordingId(rec.strRecordId);
+    kodiRecord.SetTitle(rec.strTitle);
+    kodiRecord.SetDirectory(rec.strDirectory);
+    kodiRecord.SetChannelName(rec.strChannelName);
+    kodiRecord.SetRecordingTime(rec.startTime);
+    kodiRecord.SetPlotOutline(rec.strPlotOutline);
+    kodiRecord.SetPlot(rec.strPlotOutline);
+    kodiRecord.SetDuration(rec.duration);
+    kodiRecord.SetLifetime(rec.iLifeTime);
+    kodiRecord.SetChannelUid(rec.iChannelUid);
+    kodiRecord.SetChannelType(rec.bRadio ? PVR_RECORDING_CHANNEL_TYPE_RADIO : PVR_RECORDING_CHANNEL_TYPE_TV);
 
-    xbmc_records.push_back(std::move(xbmcRecord));
+    kodi_records.push_back(std::move(kodiRecord));
   };
 
   std::for_each(recordings->cbegin(), recordings->cend(), insert_lambda);
 
-  for (const auto & xbmcRecord : xbmc_records)
+  for (const auto & kodiRecord : kodi_records)
   {
-    PVR->TransferRecordingEntry(handle, &xbmcRecord);
+    results.Add(kodiRecord);
   }
 
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR Data::GetRecordingStreamProperties(const kodi::addon::PVRRecording& recording, std::vector<kodi::addon::PVRStreamProperty>& properties)
+{
+  std::string streamUrl, streamType;
+  PVR_ERROR ret = GetRecordingStreamUrl(recording.GetRecordingId(), streamUrl, streamType);
+  if (PVR_ERROR_NO_ERROR != ret)
+    return ret;
+
+  properties = StreamProperties(streamUrl, streamType, false);
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -1113,18 +1203,44 @@ bool Data::RecordingExists(const std::string & recordId) const
   return recordings->cend() != std::find_if(recordings->cbegin(), recordings->cend(), [&recordId] (const Recording & r) { return recordId == r.strRecordId; });
 }
 
-int Data::GetTimersAmount()
+PVR_ERROR Data::GetTimerTypes(std::vector<kodi::addon::PVRTimerType>& types)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "%s", __FUNCTION__);
+
+  int id = 0;
+  kodi::addon::PVRTimerType type;
+
+  type.SetId(++id);
+  type.SetAttributes(PVR_TIMER_TYPE_IS_MANUAL | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME);
+  kodi::Log(ADDON_LOG_DEBUG, "%s - id %i attributes: 0x%x", __FUNCTION__, id, type.GetAttributes());
+  types.push_back(type);
+
+  type.SetId(++id);
+  type.SetAttributes(PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME);
+  kodi::Log(ADDON_LOG_DEBUG, "%s - id %i attributes: 0x%x", __FUNCTION__, id, type.GetAttributes());
+  types.push_back(type);
+
+  type.SetId(++id);
+  type.SetAttributes(PVR_TIMER_TYPE_IS_REPEATING | PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME);
+  kodi::Log(ADDON_LOG_DEBUG, "%s - id %i attributes: 0x%x", __FUNCTION__, id, type.GetAttributes());
+  types.push_back(type);
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR Data::GetTimersAmount(int& amount)
 {
   decltype (m_timers) timers;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     timers = m_timers;
   }
-  return timers->size();
+  amount = timers->size();
+  return PVR_ERROR_NO_ERROR;
 }
 
 
-PVR_ERROR Data::GetTimers(ADDON_HANDLE handle)
+PVR_ERROR Data::GetTimers(kodi::addon::PVRTimersResultSet& results)
 {
   decltype (m_timers) timers;
   {
@@ -1132,34 +1248,33 @@ PVR_ERROR Data::GetTimers(ADDON_HANDLE handle)
     timers = m_timers;
   }
 
-  std::vector<PVR_TIMER> xbmc_timers;
+  std::vector<kodi::addon::PVRTimer> kodi_timers;
   for (const auto & timer : *timers)
   {
-    PVR_TIMER xbmcTimer;
-    memset(&xbmcTimer, 0, sizeof(PVR_TIMER));
+    kodi::addon::PVRTimer kodiTimer;
 
-    xbmcTimer.iClientIndex = timer.iClientIndex;
-    xbmcTimer.iClientChannelUid = timer.iClientChannelUid;
-    xbmcTimer.startTime = timer.startTime;
-    xbmcTimer.endTime = timer.endTime;
-    xbmcTimer.state = timer.state;
-    xbmcTimer.iTimerType = 1; // Note: this must match some type from GetTimerTypes()
-    xbmcTimer.iLifetime = timer.iLifeTime;
-    strAssign(xbmcTimer.strTitle, timer.strTitle);
-    strAssign(xbmcTimer.strSummary, timer.strSummary);
-    strAssign(xbmcTimer.strDirectory, timer.strDirectory);
+    kodiTimer.SetClientIndex(timer.iClientIndex);
+    kodiTimer.SetClientChannelUid(timer.iClientChannelUid);
+    kodiTimer.SetStartTime(timer.startTime);
+    kodiTimer.SetEndTime(timer.endTime);
+    kodiTimer.SetState(timer.state);
+    kodiTimer.SetTimerType(1); // Note: this must match some type from GetTimerTypes()
+    kodiTimer.SetLifetime(timer.iLifeTime);
+    kodiTimer.SetTitle(timer.strTitle);
+    kodiTimer.SetSummary(timer.strSummary);
+    kodiTimer.SetDirectory(timer.strDirectory);
 
-    xbmc_timers.push_back(std::move(xbmcTimer));
+    kodi_timers.push_back(std::move(kodiTimer));
   }
-  for (const auto & xbmcTimer : xbmc_timers)
+  for (const auto & kodiTimer : kodi_timers)
   {
-    PVR->TransferTimerEntry(handle, &xbmcTimer);
+    results.Add(kodiTimer);
   }
 
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::AddTimer(const PVR_TIMER &timer)
+PVR_ERROR Data::AddTimer(const kodi::addon::PVRTimer& timer)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -1169,23 +1284,23 @@ PVR_ERROR Data::AddTimer(const PVR_TIMER &timer)
     epg = m_epg;
   }
 
-  const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&timer] (const Channel & ch) { return ch.iUniqueId == timer.iClientChannelUid; });
+  const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&timer] (const Channel & ch) { return ch.iUniqueId == timer.GetClientChannelUid(); });
   if (channel_i == channels->cend())
   {
-    XBMC->Log(LOG_ERROR, "%s - channel not found", __FUNCTION__);
+    kodi::Log(ADDON_LOG_ERROR, "%s - channel not found", __FUNCTION__);
     return PVR_ERROR_SERVER_ERROR;
   }
   const auto epg_channel_i = epg->find(channel_i->strId);
   if (epg_channel_i == epg->cend())
   {
-    XBMC->Log(LOG_ERROR, "%s - epg channel not found", __FUNCTION__);
+    kodi::Log(ADDON_LOG_ERROR, "%s - epg channel not found", __FUNCTION__);
     return PVR_ERROR_SERVER_ERROR;
   }
 
-  const auto epg_i = epg_channel_i->second.epg.find(timer.startTime);
+  const auto epg_i = epg_channel_i->second.epg.find(timer.GetStartTime());
   if (epg_i == epg_channel_i->second.epg.cend())
   {
-    XBMC->Log(LOG_ERROR, "%s - event not found", __FUNCTION__);
+    kodi::Log(ADDON_LOG_ERROR, "%s - event not found", __FUNCTION__);
     return PVR_ERROR_SERVER_ERROR;
   }
 
@@ -1196,7 +1311,7 @@ PVR_ERROR Data::AddTimer(const PVR_TIMER &timer)
     // update the record_id into EPG
     // Note: the m_epg/epg is read-only, so the keys must exist
     auto epg_copy = std::make_shared<epg_container_t>(*epg);
-    (*epg_copy)[channel_i->strId].epg[timer.startTime].strRecordId = record_id;
+    (*epg_copy)[channel_i->strId].epg[timer.GetStartTime()].strRecordId = record_id;
     {
       std::lock_guard<std::mutex> critical(m_mutex);
       m_epg = epg_copy;
@@ -1207,9 +1322,9 @@ PVR_ERROR Data::AddTimer(const PVR_TIMER &timer)
   return PVR_ERROR_SERVER_ERROR;
 }
 
-PVR_ERROR Data::DeleteRecord(const std::string &strRecordId)
+PVR_ERROR Data::DeleteRecording(const kodi::addon::PVRRecording& recording)
 {
-  if (m_manager.deleteRecord(strRecordId))
+  if (m_manager.deleteRecord(recording.GetRecordingId()))
   {
     SetLoadRecordings();
     return PVR_ERROR_NO_ERROR;
@@ -1217,20 +1332,22 @@ PVR_ERROR Data::DeleteRecord(const std::string &strRecordId)
   return PVR_ERROR_SERVER_ERROR;
 }
 
-PVR_ERROR Data::DeleteRecord(int iRecordId)
+PVR_ERROR Data::DeleteTimer(const kodi::addon::PVRTimer& timer, bool forceDelete)
 {
-  std::ostringstream os;
-  os << iRecordId;
-
-  return DeleteRecord(os.str());
+  if (m_manager.deleteRecord(std::to_string((timer.GetClientIndex()))))
+  {
+    SetLoadRecordings();
+    return PVR_ERROR_NO_ERROR;
+  }
+  return PVR_ERROR_SERVER_ERROR;
 }
 
-PVR_ERROR Data::GetDriveSpace(long long *iTotal, long long *iUsed)
+PVR_ERROR Data::GetDriveSpace(uint64_t& total, uint64_t& used)
 {
   {
     std::lock_guard<std::mutex> critical(m_mutex);
-    *iTotal = m_recordingAvailableDuration;
-    *iUsed = m_recordingRecordedDuration;
+    total = m_recordingAvailableDuration;
+    used = m_recordingRecordedDuration;
   }
   return PVR_ERROR_NO_ERROR;
 }
@@ -1240,27 +1357,20 @@ bool Data::LoggedIn() const
   return m_manager.loggedIn();
 }
 
-properties_t Data::StreamProperties(const std::string & url, const std::string & streamType, bool isLive)
+std::vector<kodi::addon::PVRStreamProperty> Data::StreamProperties(const std::string & url, const std::string & streamType, bool isLive)
 {
   static const std::set<std::string> ADAPTIVE_TYPES = {"mpd", "ism", "hls"};
 
-  m_currentStreamIsLive = isLive;
-
-  properties_t props;
-  props[PVR_STREAM_PROPERTY_STREAMURL] = url;
+  std::vector<kodi::addon::PVRStreamProperty> properties;
+  properties.emplace_back(PVR_STREAM_PROPERTY_STREAMURL, url);
   if (m_useAdaptive && 0 < ADAPTIVE_TYPES.count(streamType))
   {
-    props[PVR_STREAM_PROPERTY_INPUTSTREAM] = "inputstream.adaptive";
-    props["inputstream.adaptive.manifest_type"] = streamType;
+    properties.emplace_back(PVR_STREAM_PROPERTY_INPUTSTREAM, "inputstream.adaptive");
+    properties.emplace_back("inputstream.adaptive.manifest_type", streamType);
   }
   if (isLive)
-    props[PVR_STREAM_PROPERTY_ISREALTIMESTREAM] = "true";
-  return props;
-}
-
-bool Data::CurrentStreamIsLive() const
-{
-  return m_currentStreamIsLive;
+    properties.emplace_back(PVR_STREAM_PROPERTY_ISREALTIMESTREAM, "true");
+  return properties;
 }
 
 std::string Data::ChannelsList() const
@@ -1294,7 +1404,7 @@ std::string Data::ChannelStreamType(const std::string & channelId) const
   std::string stream_type = "unknown";
   auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&channelId] (const Channel & c) { return c.strId == channelId; });
   if (channels->cend() == channel_i)
-    XBMC->Log(LOG_INFO, "%s can't find channel %s", __FUNCTION__, channelId.c_str());
+    kodi::Log(ADDON_LOG_INFO, "%s can't find channel %s", __FUNCTION__, channelId.c_str());
   else
     stream_type = channel_i->strStreamType;
   return stream_type;
@@ -1308,19 +1418,17 @@ bool Data::PinCheckUnlock(bool isPinLocked)
   if (!m_manager.pinUnlocked())
   {
     //Note: std::make_unique is available from c++14
-    std::unique_ptr<char, decltype (&xbmcStrFree)> loc{XBMC->GetLocalizedString(30202), &xbmcStrFree};
-    char pin[32];
-    pin[0] = 0;
-    if (GUI->Dialog_Numeric_ShowAndGetNumber(*pin, sizeof (pin), loc.get()))
+    std::string pin;
+    if (kodi::gui::dialogs::Numeric::ShowAndGetNumber(pin, kodi::GetLocalizedString(30202)))
     {
       if (!m_manager.pinUnlock(pin))
       {
-        XBMC->Log(LOG_ERROR, "PIN-unlocking failed");
+        kodi::Log(ADDON_LOG_ERROR, "PIN-unlocking failed");
         return false;
       }
     } else
     {
-      XBMC->Log(LOG_ERROR, "PIN-entering cancelled");
+      kodi::Log(ADDON_LOG_ERROR, "PIN-entering cancelled");
       return false;
     }
   }
@@ -1330,3 +1438,5 @@ bool Data::PinCheckUnlock(bool isPinLocked)
 }
 
 } // namespace sledovanitvcz
+
+ADDONCREATOR(sledovanitvcz::Data)

@@ -28,7 +28,7 @@
 #define sledovanitvcz_Data_h
 
 #include <vector>
-#include "client.h"
+#include "kodi/addon-instance/PVR.h"
 #include <thread>
 #include "ApiManager.h"
 #include <mutex>
@@ -136,54 +136,45 @@ typedef std::vector<Recording> recording_container_t;
 typedef std::vector<Timer> timer_container_t;
 typedef std::map<std::string, std::string> properties_t;
 
-struct Configuration
-{
-  std::string userName;
-  std::string password;
-  std::string deviceId; //!< device identifier (value for overriding the MAC address detection)
-  std::string productId; //!< product identifier (value for overriding the hostname detection)
-  int streamQuality;
-  int epgMaxDays;
-  unsigned fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh
-  unsigned loadingsRefresh; //!< delay (seconds) between loadings refresh
-  unsigned keepAliveDelay; //!< delay (seconds) between keepalive calls
-  unsigned epgCheckDelay; //!< delay (seconds) between checking if EPG load is needed
-  bool useH265; //!< flag, if h265 codec should be requested
-  bool useAdaptive; //!< flag, if inpustream.adaptive (aka adaptive bitrate streaming) should be used/requested
-  bool showLockedChannels; //!< flag, if unavailable/locked channels should be presented
-  bool showLockedOnlyPin; //!< flag, if PIN-locked only channels should be presented
-};
-
-class Data
+class ATTRIBUTE_HIDDEN Data : public kodi::addon::CAddonBase,
+                              public kodi::addon::CInstancePVRClient
 {
 public:
-  Data(Configuration cfg);
+  Data();
   virtual ~Data(void);
 
-  int GetChannelsAmount(void);
-  PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
-  PVR_ERROR GetChannelStreamUrl(const PVR_CHANNEL* channel, std::string & streamUrl, std::string & streamType);
-  PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, int iChannelUid, time_t iStart, time_t iEnd);
-  PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable) const;
-  PVR_ERROR IsEPGTagRecordable(const EPG_TAG* tag, bool* bIsRecordable) const;
-  PVR_ERROR GetEPGStreamUrl(const EPG_TAG* tag, std::string & streamUrl, std::string & streamType);
-  PVR_ERROR SetEPGTimeFrame(int iDays);
-  int GetChannelGroupsAmount(void);
-  PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio);
-  PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
-  int GetRecordingsAmount();
-  PVR_ERROR GetRecordings(ADDON_HANDLE handle);
-  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType);
-  void GetRecordingsUrls();
-  int GetTimersAmount();
-  PVR_ERROR GetTimers(ADDON_HANDLE handle);
-  PVR_ERROR AddTimer(const PVR_TIMER &timer);
-  PVR_ERROR DeleteRecord(const std::string &strRecordId);
-  PVR_ERROR DeleteRecord(int iRecordId);
-  PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed);
+  ADDON_STATUS Create() override;
+  ADDON_STATUS SetSetting(const std::string & settingName, const kodi::CSettingValue & settingValue) override;
+
+  PVR_ERROR GetCapabilities(kodi::addon::PVRCapabilities& capabilities) override;
+  PVR_ERROR GetBackendName(std::string& name) override;
+  PVR_ERROR GetBackendVersion(std::string& version) override;
+  PVR_ERROR GetConnectionString(std::string& connection) override;
+
+  PVR_ERROR GetChannelsAmount(int& amount) override;
+  PVR_ERROR GetChannels(bool radio, kodi::addon::PVRChannelsResultSet& results) override;
+  PVR_ERROR GetChannelStreamProperties(const kodi::addon::PVRChannel& channel, std::vector<kodi::addon::PVRStreamProperty>& properties) override;
+  PVR_ERROR GetSignalStatus(int channelUid, kodi::addon::PVRSignalStatus& signalStatus) override;
+  PVR_ERROR GetEPGForChannel(int channelUid, time_t start, time_t end, kodi::addon::PVREPGTagsResultSet& results) override;
+  PVR_ERROR IsEPGTagPlayable(const kodi::addon::PVREPGTag& tag, bool& isPlayable) override;
+  PVR_ERROR IsEPGTagRecordable(const kodi::addon::PVREPGTag& tag, bool& isRecordable) override;
+  PVR_ERROR GetEPGTagStreamProperties(const kodi::addon::PVREPGTag& tag, std::vector<kodi::addon::PVRStreamProperty>& properties) override;
+  PVR_ERROR SetEPGTimeFrame(int iDays) override;
+  PVR_ERROR GetChannelGroupsAmount(int& amount) override;
+  PVR_ERROR GetChannelGroups(bool radio, kodi::addon::PVRChannelGroupsResultSet& results) override;
+  PVR_ERROR GetChannelGroupMembers(const kodi::addon::PVRChannelGroup& group, kodi::addon::PVRChannelGroupMembersResultSet& results) override;
+  PVR_ERROR GetRecordingsAmount(bool deleted, int& amount) override;
+  PVR_ERROR GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet& results) override;
+  PVR_ERROR DeleteRecording(const kodi::addon::PVRRecording& recording) override;
+  PVR_ERROR GetRecordingStreamProperties(const kodi::addon::PVRRecording& recording, std::vector<kodi::addon::PVRStreamProperty>& properties) override;
+  PVR_ERROR GetTimerTypes(std::vector<kodi::addon::PVRTimerType>& types) override;
+  PVR_ERROR GetTimersAmount(int& amount) override;
+  PVR_ERROR GetTimers(kodi::addon::PVRTimersResultSet& results) override;
+  PVR_ERROR AddTimer(const kodi::addon::PVRTimer& timer) override;
+  PVR_ERROR DeleteTimer(const kodi::addon::PVRTimer& timer, bool forceDelete) override;
+  PVR_ERROR GetDriveSpace(uint64_t& total, uint64_t& used) override;
+
   bool LoggedIn() const;
-  properties_t StreamProperties(const std::string & url, const std::string & streamType, bool isLive);
-  bool CurrentStreamIsLive() const;
 
 protected:
   static int ParseDateTime(std::string strDate);
@@ -206,6 +197,10 @@ protected:
   std::string ChannelsList() const;
   std::string ChannelStreamType(const std::string & channelId) const;
   bool PinCheckUnlock(bool isPinLocked);
+  std::vector<kodi::addon::PVRStreamProperty> StreamProperties(const std::string & url, const std::string & streamType, bool isLive);
+  PVR_ERROR GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType);
+  PVR_ERROR GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string & streamUrl, std::string & streamType);
+  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType);
 
 protected:
   void Process(void);
@@ -235,17 +230,14 @@ private:
   time_t m_iLastStart;
   time_t m_iLastEnd;
   ApiManager::StreamQuality_t m_streamQuality;
-  unsigned m_fullChannelEpgRefresh;
-  unsigned m_loadingsRefresh;
-  unsigned m_keepAliveDelay;
-  unsigned m_epgCheckDelay;
-  bool m_useH265;
-  bool m_useAdaptive;
-  bool m_showLockedChannels;
-  bool m_showLockedOnlyPin;
-
-  // data used only by client(kodi) calling thread
-  bool m_currentStreamIsLive;
+  unsigned m_fullChannelEpgRefresh; //!< delay (seconds) between full channel/EPG refresh
+  unsigned m_loadingsRefresh; //!< delay (seconds) between loadings refresh
+  unsigned m_keepAliveDelay; //!< delay (seconds) between keepalive calls
+  unsigned m_epgCheckDelay; //!< delay (seconds) between checking if EPG load is needed
+  bool m_useH265; //!< flag, if h265 codec should be requested
+  bool m_useAdaptive; //!< flag, if inpustream.adaptive (aka adaptive bitrate streaming) should be used/requested
+  bool m_showLockedChannels; //!< flag, if unavailable/locked channels should be presented
+  bool m_showLockedOnlyPin; //!< flag, if PIN-locked only channels should be presented
 
   ApiManager                        m_manager;
 };

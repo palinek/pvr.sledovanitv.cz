@@ -51,9 +51,10 @@
 #include <fstream>
 #include <iostream>
 
-#include "client.h"
 #include "ApiManager.h"
 #include "picosha2.h"
+#include "kodi/General.h"
+#include "kodi/Filesystem.h"
 #include <ctime>
 #include <sstream>
 #include <iomanip>
@@ -107,13 +108,13 @@ static std::string get_mac_address()
 {
   std::string mac_addr;
 #if defined(TARGET_ANDROID) && __ANDROID_API__ < 24
-  XBMC->Log(LOG_INFO, "Can't get MAC address with target Android API < 24 (no getifaddrs() support)");
+  kodi::Log(ADDON_LOG_INFO, "Can't get MAC address with target Android API < 24 (no getifaddrs() support)");
 #endif
 #if defined(TARGET_LINUX) || defined(TARGET_FREEBSD) || defined(TARGET_DARWIN)
     struct ifaddrs * addrs;
     if (0 != getifaddrs(&addrs))
     {
-      XBMC->Log(LOG_INFO, "While getting MAC address getifaddrs() failed, %s", strerror(errno));
+      kodi::Log(ADDON_LOG_INFO, "While getting MAC address getifaddrs() failed, %s", strerror(errno));
       return mac_addr;
     }
     std::unique_ptr<struct ifaddrs, decltype (&freeifaddrs)> if_addrs{addrs, &freeifaddrs};
@@ -169,7 +170,7 @@ static std::string get_mac_address()
       }
     } else
     {
-      XBMC->Log(LOG_INFO, "GetAdaptersAddresses failed...");
+      kodi::Log(ADDON_LOG_INFO, "GetAdaptersAddresses failed...");
     }
 #endif
     return mac_addr;
@@ -193,7 +194,7 @@ ApiManager::ApiManager(const std::string & userName
   , m_pinUnlocked{false}
   , m_sessionId{std::make_shared<std::string>()}
 {
-  XBMC->Log(LOG_INFO, "Loading ApiManager");
+  kodi::Log(ADDON_LOG_INFO, "Loading ApiManager");
 }
 
 std::string ApiManager::call(const std::string & urlPath, const ApiParams_t & paramsMap, bool putSessionVar) const
@@ -212,17 +213,16 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParams_t & pa
   url += "|User-Agent=okhttp%2F3.12.0";
   std::string response;
 
-  void *fh = XBMC->OpenFile(url.c_str(), XFILE::READ_NO_CACHE);
-  if (fh)
+  kodi::vfs::CFile fh;
+  if (fh.OpenFile(url, ADDON_READ_NO_CACHE))
   {
     char buffer[1024];
-    while (int bytesRead = XBMC->ReadFile(fh, buffer, 1024))
+    while (int bytesRead = fh.Read(buffer, 1024))
       response.append(buffer, bytesRead);
-    XBMC->CloseFile(fh);
   }
   else
   {
-    XBMC->Log(LOG_ERROR, "Cannot open url");
+    kodi::Log(ADDON_LOG_ERROR, "Cannot open url");
   }
 
   return response;
@@ -245,11 +245,11 @@ bool ApiManager::isSuccess(const std::string &response, Json::Value & root)
   {
     bool success = root.get("status", 0).asInt() == 1;
     if (!success)
-      XBMC->Log(LOG_ERROR, "Error indicated in response. status: %d, error: %s", root.get("status", 0).asInt(), root.get("error", "").asString().c_str());
+      kodi::Log(ADDON_LOG_ERROR, "Error indicated in response. status: %d, error: %s", root.get("status", 0).asInt(), root.get("error", "").asString().c_str());
     return success;
   }
 
-  XBMC->Log(LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", std::min(response.size(), static_cast<size_t>(1024)), response.c_str(), jsonReaderError.c_str());
+  kodi::Log(ADDON_LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", std::min(response.size(), static_cast<size_t>(1024)), response.c_str(), jsonReaderError.c_str());
   return false;
 }
 
@@ -277,7 +277,7 @@ bool ApiManager::deletePairing(const Json::Value & root)
       || (del_root.get("error", "").asString() == "no device")
       )
   {
-    XBMC->Log(LOG_INFO, "Previous pairing(deviceId:%s) deleted (or no such device)", old_dev_id.c_str());
+    kodi::Log(ADDON_LOG_INFO, "Previous pairing(deviceId:%s) deleted (or no such device)", old_dev_id.c_str());
     return true;
   }
 
@@ -292,7 +292,7 @@ bool ApiManager::pairDevice(Json::Value & root)
   std::string macAddr = m_overridenMac.empty() ? get_mac_address() : m_overridenMac;
   if (macAddr.empty())
   {
-    XBMC->Log(LOG_INFO, "Unable to get MAC address, using a dummy for serial");
+    kodi::Log(ADDON_LOG_INFO, "Unable to get MAC address, using a dummy for serial");
     macAddr = "11223344";
   }
   // compute SHA256 of string representation of MAC address
@@ -340,7 +340,7 @@ bool ApiManager::pairDevice(Json::Value & root)
     m_deviceId = buf;
     m_password = passwd;
 
-    XBMC->Log(LOG_DEBUG, "Device ID: %d, Password: %s", devId, passwd.c_str());
+    kodi::Log(ADDON_LOG_DEBUG, "Device ID: %d, Password: %s", devId, passwd.c_str());
 
     const bool paired = !m_deviceId.empty() && !m_password.empty();
 
@@ -355,7 +355,7 @@ bool ApiManager::pairDevice(Json::Value & root)
   }
   else
   {
-    XBMC->Log(LOG_ERROR, "Error in pairing response.");
+    kodi::Log(ADDON_LOG_ERROR, "Error in pairing response.");
   }
 
   return false;
@@ -369,7 +369,7 @@ bool ApiManager::login()
   {
     if (!pairDevice(pairing_root))
     {
-      XBMC->Log(LOG_ERROR, "Cannot pair device");
+      kodi::Log(ADDON_LOG_ERROR, "Cannot pair device");
       return false;
     }
   }
@@ -391,14 +391,14 @@ bool ApiManager::login()
 
     if (new_session_id.empty())
     {
-      XBMC->Log(LOG_ERROR, "Cannot perform device login");
+      kodi::Log(ADDON_LOG_ERROR, "Cannot perform device login");
     }
     else
     {
-      XBMC->Log(LOG_INFO, "Device logged in. Session ID: %s", new_session_id.c_str());
+      kodi::Log(ADDON_LOG_INFO, "Device logged in. Session ID: %s", new_session_id.c_str());
     }
   } else if (response.empty()) {
-    XBMC->Log(LOG_INFO, "No login response. Is something wrong with network or remote servers?");
+    kodi::Log(ADDON_LOG_INFO, "No login response. Is something wrong with network or remote servers?");
     // don't do anything, let the state as is to give it another try
     return false;
   }
@@ -559,7 +559,7 @@ std::string ApiManager::urlEncode(const std::string &str)
 
 std::string ApiManager::buildQueryString(const ApiParams_t & paramMap, bool putSessionVar) const
 {
-  XBMC->Log(LOG_DEBUG, "%s - size %d", __FUNCTION__, paramMap.size());
+  kodi::Log(ADDON_LOG_DEBUG, "%s - size %d", __FUNCTION__, paramMap.size());
   std::string strOut;
   for (const auto & param : paramMap)
   {
@@ -583,18 +583,17 @@ std::string ApiManager::buildQueryString(const ApiParams_t & paramMap, bool putS
 
 std::string ApiManager::readPairFile()
 {
-  std::string url = GetUserFilePath(PAIR_FILE);
+  std::string url = kodi::GetBaseUserPath(PAIR_FILE);
   std::string strContent;
 
-  XBMC->Log(LOG_DEBUG, "Openning file %s", url.c_str());
+  kodi::Log(ADDON_LOG_DEBUG, "Openning file %s", url.c_str());
 
-  void* fileHandle = XBMC->OpenFile(url.c_str(), 0);
-  if (fileHandle)
+  kodi::vfs::CFile fileHandle;
+  if (fileHandle.OpenFile(url, 0))
   {
     char buffer[1024];
-    while (int bytesRead = XBMC->ReadFile(fileHandle, buffer, 1024))
+    while (int bytesRead = fileHandle.Read(buffer, 1024))
     strContent.append(buffer, bytesRead);
-    XBMC->CloseFile(fileHandle);
   }
 
   return strContent;
@@ -602,16 +601,15 @@ std::string ApiManager::readPairFile()
 
 void ApiManager::createPairFile(Json::Value & contentRoot)
 {
-  std::string url = GetUserFilePath(PAIR_FILE);
+  std::string url = kodi::GetBaseUserPath(PAIR_FILE);
 
-  void *fileHandle = XBMC->OpenFileForWrite(url.c_str(), true);
-  if (fileHandle)
+  kodi::vfs::CFile fileHandle;
+  if (fileHandle.OpenFileForWrite(url, true))
   {
     std::ostringstream os;
     os << contentRoot;
     const std::string & content = os.str();
-    XBMC->WriteFile(fileHandle, content.c_str(), content.length());
-    XBMC->CloseFile(fileHandle);
+    fileHandle.Write(content.c_str(), content.length());
   }
 }
 

@@ -12,11 +12,11 @@ include_directories(${KODI_INCLUDE_DIR}/.. # Hack way with "/..", need bigger Ko
 set(DEPLIBS ${JSONCPP_LIBRARIES})
 
 
-set(SLEDOVANITV_SOURCES src/client.cpp
+set(SLEDOVANITV_SOURCES
   src/ApiManager.cpp
   src/Data.cpp)
 
-set(SLEDOVANITV_HEADERS src/client.h
+set(SLEDOVANITV_HEADERS
   src/ApiManager.h
   src/CallLimiter.hh
   src/Data.h)
