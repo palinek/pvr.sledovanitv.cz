@@ -197,7 +197,7 @@ protected:
   std::string ChannelsList() const;
   std::string ChannelStreamType(const std::string & channelId) const;
   bool PinCheckUnlock(bool isPinLocked);
-  std::vector<kodi::addon::PVRStreamProperty> StreamProperties(const std::string & url, const std::string & streamType, bool isLive);
+  std::vector<kodi::addon::PVRStreamProperty> StreamProperties(const std::string & url, const std::string & streamType, bool isLive) const;
   PVR_ERROR GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType);
   PVR_ERROR GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string & streamUrl, std::string & streamType);
   PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType);

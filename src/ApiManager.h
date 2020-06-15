@@ -56,8 +56,9 @@ public:
 public:
   ApiManager(const std::string & userName
       , const std::string & userPassword
-      , const std::string & overridenMac
-      , const std::string & product);
+      , const std::string & overridenMac //!< device identifier (value for overriding the MAC address detection)
+      , const std::string & product //!< product identifier (value for overriding the hostname detection)
+      );
 
   bool login();
   bool pinUnlock(const std::string & pin);

@@ -809,7 +809,6 @@ PVR_ERROR Data::GetChannels(bool radio, kodi::addon::PVRChannelsResultSet& resul
     channels = m_channels;
   }
 
-  std::vector<kodi::addon::PVRChannel> kodi_channels;
   for (const auto & channel : *channels)
   {
     if (channel.bIsRadio == radio)
@@ -824,13 +823,8 @@ PVR_ERROR Data::GetChannels(bool radio, kodi::addon::PVRChannelsResultSet& resul
       kodiChannel.SetIconPath(channel.strIconPath);
       kodiChannel.SetIsHidden(false);
 
-      kodi_channels.push_back(std::move(kodiChannel));
+      results.Add(kodiChannel);
     }
-  }
-
-  for (const auto & kodiChannel : kodi_channels)
-  {
-    results.Add(kodiChannel);
   }
 
   {
@@ -905,7 +899,6 @@ PVR_ERROR Data::GetChannelGroups(bool radio, kodi::addon::PVRChannelGroupsResult
     groups = m_groups;
   }
 
-  std::vector<kodi::addon::PVRChannelGroup> kodi_groups;
   for (const auto & group : *groups)
   {
     if (group.bRadio == radio)
@@ -915,13 +908,8 @@ PVR_ERROR Data::GetChannelGroups(bool radio, kodi::addon::PVRChannelGroupsResult
       kodiGroup.SetIsRadio(radio);
       kodiGroup.SetGroupName(group.strGroupName);
 
-      kodi_groups.push_back(std::move(kodiGroup));
+      results.Add(kodiGroup);
     }
-  }
-
-  for (const auto & kodiGroup : kodi_groups)
-  {
-    results.Add(kodiGroup);
   }
 
   return PVR_ERROR_NO_ERROR;
@@ -1133,8 +1121,7 @@ PVR_ERROR Data::GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet&
     std::lock_guard<std::mutex> critical(m_mutex);
     recordings = m_recordings;
   }
-  std::vector<kodi::addon::PVRRecording> kodi_records;
-  auto insert_lambda = [&kodi_records] (const Recording & rec)
+  auto insert_lambda = [&results] (const Recording & rec)
   {
     kodi::addon::PVRRecording kodiRecord;
 
@@ -1150,15 +1137,10 @@ PVR_ERROR Data::GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet&
     kodiRecord.SetChannelUid(rec.iChannelUid);
     kodiRecord.SetChannelType(rec.bRadio ? PVR_RECORDING_CHANNEL_TYPE_RADIO : PVR_RECORDING_CHANNEL_TYPE_TV);
 
-    kodi_records.push_back(std::move(kodiRecord));
+    results.Add(kodiRecord);
   };
 
   std::for_each(recordings->cbegin(), recordings->cend(), insert_lambda);
-
-  for (const auto & kodiRecord : kodi_records)
-  {
-    results.Add(kodiRecord);
-  }
 
   return PVR_ERROR_NO_ERROR;
 }
@@ -1248,7 +1230,6 @@ PVR_ERROR Data::GetTimers(kodi::addon::PVRTimersResultSet& results)
     timers = m_timers;
   }
 
-  std::vector<kodi::addon::PVRTimer> kodi_timers;
   for (const auto & timer : *timers)
   {
     kodi::addon::PVRTimer kodiTimer;
@@ -1264,10 +1245,6 @@ PVR_ERROR Data::GetTimers(kodi::addon::PVRTimersResultSet& results)
     kodiTimer.SetSummary(timer.strSummary);
     kodiTimer.SetDirectory(timer.strDirectory);
 
-    kodi_timers.push_back(std::move(kodiTimer));
-  }
-  for (const auto & kodiTimer : kodi_timers)
-  {
     results.Add(kodiTimer);
   }
 
@@ -1357,7 +1334,7 @@ bool Data::LoggedIn() const
   return m_manager.loggedIn();
 }
 
-std::vector<kodi::addon::PVRStreamProperty> Data::StreamProperties(const std::string & url, const std::string & streamType, bool isLive)
+std::vector<kodi::addon::PVRStreamProperty> Data::StreamProperties(const std::string & url, const std::string & streamType, bool isLive) const
 {
   static const std::set<std::string> ADAPTIVE_TYPES = {"mpd", "ism", "hls"};
 
