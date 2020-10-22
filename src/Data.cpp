@@ -425,6 +425,7 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
         iptventry.startTime = start_time;
         iptventry.endTime = end_time;
         iptventry.strEventId = epgEntry.get("eventId", "").asString();
+        iptventry.strIconPath = epgEntry.get("poster", "").asString();
         std::string availability = epgEntry.get("availability", "none").asString();
         iptventry.availableTimeshift = availability == "timeshift" || availability == "pvr";
         iptventry.strRecordId = epgEntry["recordId"].asString();
