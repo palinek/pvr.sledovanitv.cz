@@ -92,7 +92,7 @@ Data::Data()
   , m_recordingRecordedDuration{0}
   , m_epgMinTime{time(nullptr)}
   , m_epgMaxTime{time(nullptr) + 3600}
-  , m_epgMaxDays{EpgMaxDays()}
+  , m_epgMaxDays{EpgMaxFutureDays()}
   , m_bEGPLoaded{false}
   , m_iLastStart{0}
   , m_iLastEnd{0}
@@ -102,7 +102,7 @@ Data::Data()
               kodi::GetSettingString("productId")}
 {
 
-  SetEPGTimeFrame(m_epgMaxDays);
+  SetEPGMaxFutureDays(m_epgMaxDays);
 
   m_thread = std::thread{[this] { Process(); }};
 }
@@ -145,7 +145,7 @@ void Data::TriggerFullRefresh()
     std::lock_guard<std::mutex> critical(m_mutex);
     epg_max_days = m_epgMaxDays;
   }
-  SetEPGTimeFrame(epg_max_days);
+  SetEPGMaxFutureDays(epg_max_days);
   LoadPlayList();
 }
 
@@ -1076,14 +1076,14 @@ PVR_ERROR Data::GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string &
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::SetEPGTimeFrame(int iDays)
+PVR_ERROR Data::SetEPGMaxFutureDays(int iFutureDays)
 {
-  kodi::Log(ADDON_LOG_DEBUG, "%s iDays=%d", __FUNCTION__, iDays);
+  kodi::Log(ADDON_LOG_DEBUG, "%s iFutureDays=%d", __FUNCTION__, iFutureDays);
   time_t now = time(nullptr);
   std::lock_guard<std::mutex> critical(m_mutex);
   m_epgMinTime = now;
-  m_epgMaxTime = now + iDays * 86400;
-  m_epgMaxDays = iDays;
+  m_epgMaxTime = now + iFutureDays * 86400;
+  m_epgMaxDays = iFutureDays;
 
   return PVR_ERROR_NO_ERROR;
 }
