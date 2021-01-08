@@ -160,6 +160,7 @@ public:
   PVR_ERROR IsEPGTagRecordable(const kodi::addon::PVREPGTag& tag, bool& isRecordable) override;
   PVR_ERROR GetEPGTagStreamProperties(const kodi::addon::PVREPGTag& tag, std::vector<kodi::addon::PVRStreamProperty>& properties) override;
   PVR_ERROR SetEPGMaxFutureDays(int iFutureDays) override;
+  PVR_ERROR SetEPGMaxPastDays(int iPastDays) override;
   PVR_ERROR GetChannelGroupsAmount(int& amount) override;
   PVR_ERROR GetChannelGroups(bool radio, kodi::addon::PVRChannelGroupsResultSet& results) override;
   PVR_ERROR GetChannelGroupMembers(const kodi::addon::PVRChannelGroup& group, kodi::addon::PVRChannelGroupMembersResultSet& results) override;
@@ -201,6 +202,7 @@ protected:
   PVR_ERROR GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType);
   PVR_ERROR GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string & streamUrl, std::string & streamType);
   PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType);
+  PVR_ERROR SetEPGMaxDays(int iFutureDays, int iPastDays);
 
 protected:
   void Process(void);
@@ -223,7 +225,8 @@ private:
   long long m_recordingRecordedDuration;
   time_t m_epgMinTime;
   time_t m_epgMaxTime;
-  int m_epgMaxDays;
+  int m_epgMaxFutureDays;
+  int m_epgMaxPastDays;
 
   // data used only by "job" thread
   bool m_bEGPLoaded;
