@@ -64,8 +64,8 @@
 namespace sledovanitvcz
 {
 
-const std::string ApiManager::API_URL = "https://sledovanitv.cz/api/";
-const std::string ApiManager::TIMESHIFTINFO_URL = "https://sledovanitv.cz/playback/timeshiftInfo";
+const std::string ApiManager::API_URL[SP_END] = { "https://sledovanitv.cz/api/", "https://api.moderntv.eu/api/" };
+const std::string ApiManager::API_UNIT[SP_END] = { "default", "modernitv" };
 const std::string ApiManager::PAIR_FILE = "pairinfo";
 
 /* Converts a hex character to its integer value */
@@ -183,11 +183,13 @@ std::string ApiManager::formatTime(time_t t)
   return buf;
 }
 
-ApiManager::ApiManager(const std::string & userName
+ApiManager::ApiManager(ServiceProvider_t serviceProvider
+    , const std::string & userName
     , const std::string & userPassword
     , const std::string & overridenMac
     , const std::string & product)
-  : m_userName{userName}
+  : m_serviceProvider{serviceProvider}
+  , m_userName{userName}
   , m_userPassword{userPassword}
   , m_overridenMac{overridenMac}
   , m_product{product}
@@ -230,7 +232,7 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParams_t & pa
 
 std::string ApiManager::apiCall(const std::string &function, const ApiParams_t & paramsMap, bool putSessionVar /*= true*/) const
 {
-  std::string url = API_URL;
+  std::string url = API_URL[m_serviceProvider];
   url += function;
   return call(url, paramsMap, putSessionVar);
 }
@@ -270,7 +272,7 @@ bool ApiManager::deletePairing(const Json::Value & root)
   ApiParams_t params;
   params.emplace_back("deviceId", old_dev_id);
   params.emplace_back("password", old_password);
-  params.emplace_back("unit", "default");
+  params.emplace_back("unit", API_UNIT[m_serviceProvider]);
   const std::string response = apiCall("delete-pairing", params, false);
   Json::Value del_root;
   if (isSuccess(response, del_root)
@@ -324,7 +326,7 @@ bool ApiManager::pairDevice(Json::Value & root)
     params.emplace_back("type", "androidportable");
     params.emplace_back("serial", m_serial);
     params.emplace_back("product", product);
-    params.emplace_back("unit", "default");
+    params.emplace_back("unit", API_UNIT[m_serviceProvider]);
     params.emplace_back("checkLimit", "1");
 
     pairJson = apiCall("create-pairing", params, false);
@@ -379,7 +381,7 @@ bool ApiManager::login()
   param.emplace_back("password", m_password);
   param.emplace_back("version", "2.6.21");
   param.emplace_back("lang", "en");
-  param.emplace_back("unit", "default");
+  param.emplace_back("unit", API_UNIT[m_serviceProvider]);
 
   Json::Value root;
 

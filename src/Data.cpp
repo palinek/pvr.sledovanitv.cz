@@ -97,10 +97,13 @@ Data::Data()
   , m_bEGPLoaded{false}
   , m_iLastStart{0}
   , m_iLastEnd{0}
-  , m_manager{kodi::GetSettingString("userName"),
-              kodi::GetSettingString("password"),
-              kodi::GetSettingString("deviceId"),
-              kodi::GetSettingString("productId")}
+  , m_manager{
+    kodi::GetSettingEnum<ApiManager::ServiceProvider_t>("serviceProvider", ApiManager::SP_DEFAULT)
+    , kodi::GetSettingString("userName")
+    , kodi::GetSettingString("password")
+    , kodi::GetSettingString("deviceId")
+    , kodi::GetSettingString("productId")
+  }
 {
 
   SetEPGMaxDays(m_epgMaxFutureDays, m_epgMaxPastDays);

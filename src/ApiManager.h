@@ -50,11 +50,19 @@ public:
       , SQ_SD = 20
       , SQ_HD = 40
   };
+  enum ServiceProvider_t
+  {
+    SP_DEFAULT = 0
+      , SP_SLEDOVANITV_CZ = SP_DEFAULT
+      , SP_MODERNITV_CZ = 1
+      , SP_END
+  };
 public:
   static std::string formatTime(time_t t);
 
 public:
-  ApiManager(const std::string & userName
+  ApiManager(ServiceProvider_t serviceProvider
+      , const std::string & userName
       , const std::string & userPassword
       , const std::string & overridenMac //!< device identifier (value for overriding the MAC address detection)
       , const std::string & product //!< product identifier (value for overriding the hostname detection)
@@ -90,9 +98,10 @@ private:
   bool pairDevice(Json::Value & root);
   bool deletePairing(const Json::Value & root);
 
-  static const std::string API_URL;
-  static const std::string TIMESHIFTINFO_URL;
+  static const std::string API_URL[SP_END];
+  static const std::string API_UNIT[SP_END];
   static const std::string PAIR_FILE;
+  const ServiceProvider_t m_serviceProvider;
   const std::string m_userName;
   const std::string m_userPassword;
   const std::string m_overridenMac;

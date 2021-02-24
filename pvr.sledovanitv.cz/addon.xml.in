@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="pvr.sledovanitv.cz"
-  version="4.4.0"
-  name="PVR Client for sledovanitv.cz (unofficial)"
+  version="4.5.0"
+  name="PVR sledovanitv.cz (unofficial)"
   provider-name="palinek">
   <requires>@ADDON_DEPENDS@
     <import addon="inputstream.adaptive" minversion="2.5.5" optional="true"/>

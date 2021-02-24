@@ -18,6 +18,18 @@ msgctxt "#30011"
 msgid "PVR sledovanitv.cz (unofficial)"
 msgstr "PVR sledovanitv.cz (neoficiálny)"
 
+msgctxt "#30013"
+msgid "Service provider"
+msgstr "Poskytovateľ služieb"
+
+msgctxt "#30014"
+msgid "sledovanitv.cz"
+msgstr "sledovanitv.cz"
+
+msgctxt "#30015"
+msgid "modernitv.cz"
+msgstr "modernitv.cz"
+
 msgctxt "#30010"
 msgid "Basic"
 msgstr "Základné"

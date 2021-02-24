@@ -4,6 +4,17 @@
 
     <category id="basic" label="30010">
       <group id="1" label="30010">
+        <setting id="serviceProvider" type="integer" label="30013">
+          <level>0</level>
+          <default>0</default> <!-- ServiceProvider_t::SP_DEFAULT -->
+          <constraints>
+            <options>
+              <option label="30014">0</option> <!-- ServiceProvider_t::SP_SLEDOVANITV_CZ -->
+              <option label="30015">1</option> <!-- ServiceProvider_t::SP_MODERNITV_CZ -->
+            </options>
+          </constraints>
+          <control type="list" format="string" />
+        </setting>
         <setting id="userName" type="string" label="30000">
           <level>0</level>
           <default></default>
