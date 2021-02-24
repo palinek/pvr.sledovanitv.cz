@@ -5,7 +5,7 @@
     <category id="basic" label="30010">
       <group id="1" label="30010">
         <setting id="userName" type="string" label="30000">
-          <level>1</level>
+          <level>0</level>
           <default></default>
           <constraints>
             <allowempty>true</allowempty>
@@ -13,7 +13,7 @@
           <control type="edit" format="string"/>
         </setting>
         <setting id="password" type="string" label="30001">
-          <level>1</level>
+          <level>0</level>
           <default></default>
           <constraints>
             <allowempty>true</allowempty>
@@ -23,7 +23,7 @@
           </control>
         </setting>
         <setting id="deviceId" type="string" label="30008">
-          <level>1</level>
+          <level>3</level>
           <default></default>
           <constraints>
             <allowempty>true</allowempty>
@@ -55,8 +55,8 @@
           <control type="toggle" />
         </setting>
         <setting id="useAdaptive" type="boolean" label="30006">
-          <level>1</level>
-          <default>false</default>
+          <level>2</level>
+          <default>true</default>
           <control type="toggle" />
         </setting>
         <setting id="showLockedChannels" type="boolean" label="30007">
@@ -78,7 +78,7 @@
     <category id="refresh" label="30100">
       <group id="1" label="30100">
         <setting id="fullChannelEpgRefresh" type="integer" label="30101">
-          <level>1</level>
+          <level>3</level>
           <default>24</default>
           <constraints>
             <minimum>1</minimum>
@@ -90,7 +90,7 @@
           </control>
         </setting>
         <setting id="loadingsRefresh" type="integer" label="30102">
-          <level>1</level>
+          <level>3</level>
           <default>60</default>
           <constraints>
             <minimum>20</minimum>
@@ -102,7 +102,7 @@
           </control>
         </setting>
         <setting id="keepAliveDelay" type="integer" label="30103">
-          <level>1</level>
+          <level>3</level>
           <default>20</default>
           <constraints>
             <minimum>15</minimum>
@@ -114,7 +114,7 @@
           </control>
         </setting>
         <setting id="epgCheckDelay" type="integer" label="30104">
-          <level>1</level>
+          <level>3</level>
           <default>1</default>
           <constraints>
             <minimum>1</minimum>
