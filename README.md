@@ -6,6 +6,10 @@
 unofficial [sledovanitv.cz](https://sledovanitv.cz) PVR client addon for [Kodi](https://kodi.tv)
 (this client is not developed nor officially supported by sledovanitv.cz)
 
+## Currently supported service providers
+- [sledovanitv.cz](https://sledovanitv.cz)
+- [modernitv.cz](https://modernitv.cz)
+
 ## Build instructions
 
 ### Linux
