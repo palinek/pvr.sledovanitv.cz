@@ -1,6 +1,6 @@
-[![Build Status](https://jenkins.kodi.tv/buildStatus/icon?job=palinek%2Fpvr.sledovanitv.cz%2FMatrix)](https://jenkins.kodi.tv/view/Addons/job/palinek/job/pvr.sledovanitv.cz/job/Matrix/)
-[![Build status](https://travis-ci.org/palinek/pvr.sledovanitv.cz.svg?branch=master)](https://travis-ci.org/palinek/pvr.sledovanitv.cz)
-[![Build status](https://ci.appveyor.com/api/projects/status/02qaoie8tcv4klnf/branch/master?svg=true)](https://ci.appveyor.com/project/palinek/pvr-sledovanitv-cz/branch/master)
+[![Build Status](https://jenkins.kodi.tv/buildStatus/icon?job=palinek%2Fpvr.sledovanitv.cz%2FNexus)](https://jenkins.kodi.tv/view/Addons/job/palinek/job/pvr.sledovanitv.cz/job/Nexus/)
+[![Build status](https://travis-ci.org/palinek/pvr.sledovanitv.cz.svg?branch=Nexus)](https://travis-ci.org/palinek/pvr.sledovanitv.cz)
+[![Build status](https://ci.appveyor.com/api/projects/status/02qaoie8tcv4klnf/branch/Nexus?svg=true)](https://ci.appveyor.com/project/palinek/pvr-sledovanitv-cz/branch/Nexus)
 
 # sledovanitv.cz PVR
 unofficial [sledovanitv.cz](https://sledovanitv.cz) PVR client addon for [Kodi](https://kodi.tv)
