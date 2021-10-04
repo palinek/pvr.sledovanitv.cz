@@ -1,3 +1,4 @@
+[![Build and run tests](https://github.com/palinek/pvr.sledovanitv.cz/actions/workflows/build.yml/badge.svg?branch=Nexus)](https://github.com/palinek/pvr.sledovanitv.cz/actions/workflows/build.yml)
 [![Build Status](https://jenkins.kodi.tv/buildStatus/icon?job=palinek%2Fpvr.sledovanitv.cz%2FNexus)](https://jenkins.kodi.tv/view/Addons/job/palinek/job/pvr.sledovanitv.cz/job/Nexus/)
 [![Build status](https://ci.appveyor.com/api/projects/status/02qaoie8tcv4klnf/branch/Nexus?svg=true)](https://ci.appveyor.com/project/palinek/pvr-sledovanitv-cz/branch/Nexus)
 
