@@ -156,7 +156,7 @@ void Data::TriggerFullRefresh()
 
 bool Data::LoadEPGJob()
 {
-  kodi::Log(ADDON_LOG_INFO, "%s will check if EGP loading needed", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "%s will check if EGP loading needed", __FUNCTION__);
   time_t min_epg, max_epg;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
