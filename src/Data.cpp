@@ -447,10 +447,17 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
     return false;
   }
 
-  if (m_iLastStart == 0 || m_iLastStart > iStart)
-    m_iLastStart = iStart;
-  if (iStart + step > m_iLastEnd)
-    m_iLastEnd = iStart + step;
+  if (m_iLastEnd == 0)
+  {
+    // the first run
+    m_iLastStart = m_iLastEnd = iStart;
+  } else
+  {
+    if (m_iLastStart > iStart)
+      m_iLastStart = iStart;
+    if (iStart + step > m_iLastEnd)
+      m_iLastEnd = iStart + step;
+  }
 
   decltype (m_channels) channels;
   decltype (m_epg) epg;
