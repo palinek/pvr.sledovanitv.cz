@@ -585,7 +585,7 @@ std::string ApiManager::buildQueryString(const ApiParams_t & paramMap, bool putS
 
 std::string ApiManager::readPairFile()
 {
-  std::string url = kodi::GetBaseUserPath(PAIR_FILE);
+  std::string url = kodi::addon::GetUserPath(PAIR_FILE);
   std::string strContent;
 
   kodi::Log(ADDON_LOG_DEBUG, "Openning file %s", url.c_str());
@@ -603,7 +603,7 @@ std::string ApiManager::readPairFile()
 
 void ApiManager::createPairFile(Json::Value & contentRoot)
 {
-  std::string url = kodi::GetBaseUserPath(PAIR_FILE);
+  std::string url = kodi::addon::GetUserPath(PAIR_FILE);
 
   kodi::vfs::CFile fileHandle;
   if (fileHandle.OpenFileForWrite(url, true))

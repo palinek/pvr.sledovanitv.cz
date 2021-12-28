@@ -98,11 +98,11 @@ Data::Data()
   , m_iLastStart{0}
   , m_iLastEnd{0}
   , m_manager{
-    kodi::GetSettingEnum<ApiManager::ServiceProvider_t>("serviceProvider", ApiManager::SP_DEFAULT)
-    , kodi::GetSettingString("userName")
-    , kodi::GetSettingString("password")
-    , kodi::GetSettingString("deviceId")
-    , kodi::GetSettingString("productId")
+    kodi::addon::GetSettingEnum<ApiManager::ServiceProvider_t>("serviceProvider", ApiManager::SP_DEFAULT)
+    , kodi::addon::GetSettingString("userName")
+    , kodi::addon::GetSettingString("password")
+    , kodi::addon::GetSettingString("deviceId")
+    , kodi::addon::GetSettingString("productId")
   }
 {
 
@@ -362,20 +362,20 @@ ADDON_STATUS Data::Create()
     kodi::vfs::CreateDirectory(UserPath());
   }
 
-  m_streamQuality = kodi::GetSettingEnum<ApiManager::StreamQuality_t>("streamQuality", ApiManager::SQ_DEFAULT);
-  m_fullChannelEpgRefresh = kodi::GetSettingInt("fullChannelEpgRefresh", 24) * 3600; // make it seconds
-  m_loadingsRefresh = kodi::GetSettingInt("loadingsRefresh", 60);
-  m_keepAliveDelay = kodi::GetSettingInt("keepAliveDelay", 20);
-  m_epgCheckDelay = kodi::GetSettingInt("epgCheckDelay", 1) * 60; // make it seconds
-  m_useH265 = kodi::GetSettingBoolean("useH265", false);
-  m_useAdaptive = kodi::GetSettingBoolean("useAdaptive", false);
-  m_showLockedChannels = kodi::GetSettingBoolean("showLockedChannels", true);
-  m_showLockedOnlyPin = kodi::GetSettingBoolean("showLockedOnlyPin", true);
+  m_streamQuality = kodi::addon::GetSettingEnum<ApiManager::StreamQuality_t>("streamQuality", ApiManager::SQ_DEFAULT);
+  m_fullChannelEpgRefresh = kodi::addon::GetSettingInt("fullChannelEpgRefresh", 24) * 3600; // make it seconds
+  m_loadingsRefresh = kodi::addon::GetSettingInt("loadingsRefresh", 60);
+  m_keepAliveDelay = kodi::addon::GetSettingInt("keepAliveDelay", 20);
+  m_epgCheckDelay = kodi::addon::GetSettingInt("epgCheckDelay", 1) * 60; // make it seconds
+  m_useH265 = kodi::addon::GetSettingBoolean("useH265", false);
+  m_useAdaptive = kodi::addon::GetSettingBoolean("useAdaptive", false);
+  m_showLockedChannels = kodi::addon::GetSettingBoolean("showLockedChannels", true);
+  m_showLockedOnlyPin = kodi::addon::GetSettingBoolean("showLockedOnlyPin", true);
 
   return ADDON_STATUS_OK;
 }
 
-ADDON_STATUS Data::SetSetting(const std::string & settingName, const kodi::CSettingValue & settingValue)
+ADDON_STATUS Data::SetSetting(const std::string & settingName, const kodi::addon::CSettingValue & settingValue)
 {
   // just force our data to be re-created
   return ADDON_STATUS_NEED_RESTART;
@@ -590,7 +590,7 @@ bool Data::LoadRecordings()
     if (locked != "none")
     {
       //Note: std::make_unique is available from c++14
-      directory = kodi::GetLocalizedString(30201);
+      directory = kodi::addon::GetLocalizedString(30201);
       directory += " - ";
       directory += locked;
       kodi::Log(ADDON_LOG_INFO, "Timer/recording '%s' is locked(%s)", title.c_str(), locked.c_str());
@@ -1421,7 +1421,7 @@ bool Data::PinCheckUnlock(bool isPinLocked)
   {
     //Note: std::make_unique is available from c++14
     std::string pin;
-    if (kodi::gui::dialogs::Numeric::ShowAndGetNumber(pin, kodi::GetLocalizedString(30202)))
+    if (kodi::gui::dialogs::Numeric::ShowAndGetNumber(pin, kodi::addon::GetLocalizedString(30202)))
     {
       if (!m_manager.pinUnlock(pin))
       {

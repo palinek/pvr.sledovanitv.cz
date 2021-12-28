@@ -136,15 +136,15 @@ typedef std::vector<Recording> recording_container_t;
 typedef std::vector<Timer> timer_container_t;
 typedef std::map<std::string, std::string> properties_t;
 
-class ATTRIBUTE_HIDDEN Data : public kodi::addon::CAddonBase,
-                              public kodi::addon::CInstancePVRClient
+class ATTR_DLL_LOCAL Data : public kodi::addon::CAddonBase,
+                            public kodi::addon::CInstancePVRClient
 {
 public:
   Data();
   virtual ~Data(void);
 
   ADDON_STATUS Create() override;
-  ADDON_STATUS SetSetting(const std::string & settingName, const kodi::CSettingValue & settingValue) override;
+  ADDON_STATUS SetSetting(const std::string & settingName, const kodi::addon::CSettingValue & settingValue) override;
 
   PVR_ERROR GetCapabilities(kodi::addon::PVRCapabilities& capabilities) override;
   PVR_ERROR GetBackendName(std::string& name) override;
