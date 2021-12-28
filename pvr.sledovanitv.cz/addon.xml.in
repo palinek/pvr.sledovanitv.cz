@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="pvr.sledovanitv.cz"
-  version="20.1.1"
+  version="20.2.0"
   name="Sledovanitv.cz Client (unofficial)"
   provider-name="palinek">
   <requires>@ADDON_DEPENDS@
