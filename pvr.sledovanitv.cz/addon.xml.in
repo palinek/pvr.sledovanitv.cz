@@ -2,7 +2,7 @@
 <addon
   id="pvr.sledovanitv.cz"
   version="20.1.1"
-  name="PVR sledovanitv.cz (unofficial)"
+  name="Sledovanitv.cz Client (unofficial)"
   provider-name="palinek">
   <requires>@ADDON_DEPENDS@
     <import addon="inputstream.adaptive" minversion="2.5.5" optional="true"/>
