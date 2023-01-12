@@ -272,14 +272,14 @@ void Data::KeepAliveJob()
 void Data::LoginLoop()
 {
   unsigned login_delay = 0;
-  for (bool should_try = true; KeepAlive() && should_try; --login_delay)
+  for ( ; KeepAlive(); --login_delay)
   {
     if (0 >= login_delay)
     {
       if (m_manager.login())
       {
         ConnectionStateChange("Connected", PVR_CONNECTION_STATE_CONNECTED, "");
-        should_try = false;
+        break;
       }
       else
       {
