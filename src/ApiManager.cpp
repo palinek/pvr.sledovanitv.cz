@@ -277,6 +277,7 @@ bool ApiManager::deletePairing(const Json::Value & root)
   Json::Value del_root;
   if (isSuccess(response, del_root)
       || (del_root.get("error", "").asString() == "no device")
+      || (del_root.get("error", "").asString() == "not logged")
       )
   {
     kodi::Log(ADDON_LOG_INFO, "Previous pairing(deviceId:%s) deleted (or no such device)", old_dev_id.c_str());
