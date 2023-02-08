@@ -60,6 +60,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 
 namespace sledovanitvcz
 {
@@ -296,7 +297,7 @@ bool ApiManager::pairDevice(Json::Value & root)
   if (macAddr.empty())
   {
     kodi::Log(ADDON_LOG_INFO, "Unable to get MAC address, using a dummy for serial");
-    macAddr = "11223344";
+    macAddr = (std::ostringstream{} << std::chrono::high_resolution_clock::now().time_since_epoch().count()).str();
   }
   // compute SHA256 of string representation of MAC address
   m_serial = picosha2::hash256_hex_string(macAddr);
