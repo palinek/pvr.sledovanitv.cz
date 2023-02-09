@@ -296,8 +296,10 @@ bool ApiManager::pairDevice(Json::Value & root)
   std::string macAddr = m_overridenMac.empty() ? get_mac_address() : m_overridenMac;
   if (macAddr.empty())
   {
-    kodi::Log(ADDON_LOG_INFO, "Unable to get MAC address, using a dummy for serial");
-    macAddr = (std::ostringstream{} << std::chrono::high_resolution_clock::now().time_since_epoch().count()).str();
+    std::ostringstream os;
+    os << std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    macAddr = os.str();
+    kodi::Log(ADDON_LOG_INFO, "Unable to get MAC address, using a dummy(%s) for serial", macAddr.c_str());
   }
   // compute SHA256 of string representation of MAC address
   m_serial = picosha2::hash256_hex_string(macAddr);
