@@ -506,6 +506,9 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
         std::string availability = epgEntry.get("availability", "none").asString();
         iptventry.availableTimeshift = availability == "timeshift" || availability == "pvr";
         iptventry.strRecordId = epgEntry["recordId"].asString();
+        iptventry.starRating = round(epgEntry.get("score", 0.0).asDouble());
+        const Json::Value parent_rating{epgEntry.get("ratingAge", Json::nullValue)};
+        iptventry.parentalRating = parent_rating.isNumeric() ? parent_rating.asInt() : 0;
 
         kodi::Log(ADDON_LOG_DEBUG, "Loading TV show: %s - %s, start=%s(epoch=%llu)", strChId.c_str(), iptventry.strTitle.c_str()
             , epgEntry.get("startTime", "").asString().c_str(), static_cast<long long unsigned>(start_time));
@@ -527,6 +530,8 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
         tag.SetGenreType(EPG_GENRE_USE_STRING);        //iptventry.iGenreType;
         tag.SetGenreSubType(0);                        //iptventry.iGenreSubType;
         tag.SetGenreDescription(iptventry.strGenreString);
+        tag.SetStarRating(iptventry.starRating);
+        tag.SetParentalRating(iptventry.parentalRating);
 
         auto result = epgChannel.epg.emplace(iptventry.startTime, iptventry);
         bool value_changed = !result.second;

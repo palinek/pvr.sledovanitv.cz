@@ -468,7 +468,7 @@ bool ApiManager::getEpg(time_t start, bool smallDuration, const std::string & ch
 
   params.emplace_back("time", formatTime(start));
   params.emplace_back("duration", smallDuration ? "60" : "1439");
-  params.emplace_back("detail", "description,poster");
+  params.emplace_back("detail", "description,score,poster,rating");
   params.emplace_back("allowOrder", "1");
   if (!channels.empty())
     params.emplace_back("channels", std::move(channels));

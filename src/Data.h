@@ -55,6 +55,8 @@ struct EpgEntry
   std::string strEventId;
   bool availableTimeshift;
   std::string strRecordId; // optionally recorded
+  int starRating;
+  int parentalRating;
 };
 
 typedef std::map<time_t, EpgEntry> epg_entry_container_t;
