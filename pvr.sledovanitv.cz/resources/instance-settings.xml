@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings version="1">
+  <section id="pvr.sledovanitv.cz" label="30011">
+
+    <category id="basic" label="30010">
+      <group id="1" label="30010">
+        <setting id="serviceProvider" type="integer" label="30013">
+          <level>0</level>
+          <default>0</default> <!-- ServiceProvider_t::SP_DEFAULT -->
+          <constraints>
+            <options>
+              <option label="30014">0</option> <!-- ServiceProvider_t::SP_SLEDOVANITV_CZ -->
+              <option label="30015">1</option> <!-- ServiceProvider_t::SP_MODERNITV_CZ -->
+            </options>
+          </constraints>
+          <control type="list" format="string" />
+        </setting>
+        <setting id="userName" type="string" label="30000">
+          <level>0</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string"/>
+        </setting>
+        <setting id="password" type="string" label="30001">
+          <level>0</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <hidden>true</hidden>
+          </control>
+        </setting>
+        <setting id="deviceId" type="string" label="30008">
+          <level>3</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string" />
+        </setting>
+        <setting id="productId" type="string" label="30012">
+          <level>3</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string" />
+        </setting>
+        <setting id="streamQuality" type="integer" label="30002">
+          <level>1</level>
+          <default>0</default> <!-- StreamQuality_t::SQ_DEFAULT -->
+          <constraints>
+            <options>
+              <option label="30003">20</option> <!-- StreamQuality_t::SQ_SD -->
+              <option label="30004">40</option> <!-- StreamQuality_t::SQ_HD -->
+            </options>
+          </constraints>
+          <control type="list" format="string" />
+        </setting>
+        <setting id="useH265" type="boolean" label="30005">
+          <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="useAdaptive" type="boolean" label="30006">
+          <level>2</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="showLockedChannels" type="boolean" label="30007">
+          <level>1</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="showLockedOnlyPin" type="boolean" label="30009">
+          <level>1</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="enable" setting="showLockedChannels">true</dependency>
+          </dependencies>
+          <control type="toggle" />
+        </setting>
+      </group>
+    </category>
+
+    <category id="refresh" label="30100">
+      <group id="1" label="30100">
+        <setting id="fullChannelEpgRefresh" type="integer" label="30101">
+          <level>3</level>
+          <default>24</default>
+          <constraints>
+            <minimum>1</minimum>
+            <step>1</step>
+            <maximum>48</maximum>
+          </constraints>
+          <control type="spinner" format="string">
+            <formatlabel>17998</formatlabel>
+          </control>
+        </setting>
+        <setting id="loadingsRefresh" type="integer" label="30102">
+          <level>3</level>
+          <default>60</default>
+          <constraints>
+            <minimum>20</minimum>
+            <step>10</step>
+            <maximum>300</maximum>
+          </constraints>
+          <control type="spinner" format="string">
+            <formatlabel>14045</formatlabel>
+          </control>
+        </setting>
+        <setting id="keepAliveDelay" type="integer" label="30103">
+          <level>3</level>
+          <default>20</default>
+          <constraints>
+            <minimum>15</minimum>
+            <step>1</step>
+            <maximum>120</maximum>
+          </constraints>
+          <control type="spinner" format="string">
+            <formatlabel>14045</formatlabel>
+          </control>
+        </setting>
+        <setting id="epgCheckDelay" type="integer" label="30104">
+          <level>3</level>
+          <default>1</default>
+          <constraints>
+            <minimum>1</minimum>
+            <step>1</step>
+            <maximum>120</maximum>
+          </constraints>
+          <control type="spinner" format="string">
+            <formatlabel>14044</formatlabel>
+          </control>
+        </setting>
+      </group>
+    </category>
+
+  </section>
+</settings>

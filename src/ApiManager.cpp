@@ -188,12 +188,14 @@ ApiManager::ApiManager(ServiceProvider_t serviceProvider
     , const std::string & userName
     , const std::string & userPassword
     , const std::string & overridenMac
-    , const std::string & product)
+    , const std::string & product
+    , uint64_t instanceNo)
   : m_serviceProvider{serviceProvider}
   , m_userName{userName}
   , m_userPassword{userPassword}
   , m_overridenMac{overridenMac}
   , m_product{product}
+  , m_instanceNo{instanceNo}
   , m_pinUnlocked{false}
   , m_sessionId{std::make_shared<std::string>()}
 {
@@ -291,7 +293,7 @@ bool ApiManager::deletePairing(const Json::Value & root)
 bool ApiManager::pairDevice(Json::Value & root)
 {
   bool new_pairing = false;
-  std::string pairJson = readPairFile();
+  std::string pairJson = readPairFile(getPairFilePath());
 
   std::string macAddr = m_overridenMac.empty() ? get_mac_address() : m_overridenMac;
   if (macAddr.empty())
@@ -587,15 +589,21 @@ std::string ApiManager::buildQueryString(const ApiParams_t & paramMap, bool putS
   return strOut;
 }
 
-std::string ApiManager::readPairFile()
+std::string ApiManager::getPairFilePath() const
 {
-  std::string url = kodi::addon::GetUserPath(PAIR_FILE);
+  std::ostringstream os;
+  os << PAIR_FILE << '-' << m_instanceNo;
+  return kodi::addon::GetUserPath(os.str());
+}
+
+std::string ApiManager::readPairFile(const std::string & pairFile)
+{
   std::string strContent;
 
-  kodi::Log(ADDON_LOG_DEBUG, "Openning file %s", url.c_str());
+  kodi::Log(ADDON_LOG_DEBUG, "Openning file %s", pairFile.c_str());
 
   kodi::vfs::CFile fileHandle;
-  if (fileHandle.OpenFile(url, 0))
+  if (fileHandle.OpenFile(pairFile, 0))
   {
     char buffer[1024];
     while (int bytesRead = fileHandle.Read(buffer, 1024))
@@ -605,12 +613,10 @@ std::string ApiManager::readPairFile()
   return strContent;
 }
 
-void ApiManager::createPairFile(Json::Value & contentRoot)
+void ApiManager::createPairFile(Json::Value & contentRoot) const
 {
-  std::string url = kodi::addon::GetUserPath(PAIR_FILE);
-
   kodi::vfs::CFile fileHandle;
-  if (fileHandle.OpenFileForWrite(url, true))
+  if (fileHandle.OpenFileForWrite(getPairFilePath(), true))
   {
     std::ostringstream os;
     os << contentRoot;

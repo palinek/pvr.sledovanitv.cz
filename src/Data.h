@@ -138,15 +138,13 @@ typedef std::vector<Recording> recording_container_t;
 typedef std::vector<Timer> timer_container_t;
 typedef std::map<std::string, std::string> properties_t;
 
-class ATTR_DLL_LOCAL Data : public kodi::addon::CAddonBase,
-                            public kodi::addon::CInstancePVRClient
+class ATTR_DLL_LOCAL Data : public kodi::addon::CInstancePVRClient
 {
 public:
-  Data();
+  Data(const kodi::addon::IInstanceInfo& instance);
   virtual ~Data(void);
 
-  ADDON_STATUS Create() override;
-  ADDON_STATUS SetSetting(const std::string & settingName, const kodi::addon::CSettingValue & settingValue) override;
+  ADDON_STATUS SetInstanceSetting(const std::string & settingName, const kodi::addon::CSettingValue & settingValue) override;
 
   PVR_ERROR GetCapabilities(kodi::addon::PVRCapabilities& capabilities) override;
   PVR_ERROR GetBackendName(std::string& name) override;
