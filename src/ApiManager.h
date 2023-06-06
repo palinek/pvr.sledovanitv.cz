@@ -66,6 +66,7 @@ public:
       , const std::string & userPassword
       , const std::string & overridenMac //!< device identifier (value for overriding the MAC address detection)
       , const std::string & product //!< product identifier (value for overriding the hostname detection)
+      , uint64_t instanceNo
       );
 
   bool login();
@@ -87,8 +88,7 @@ public:
 
 private:
   static std::string urlEncode(const std::string &str);
-  static std::string readPairFile();
-  static void createPairFile(Json::Value & contentRoot);
+  static std::string readPairFile(const std::string & pairFile);
   static bool isSuccess(const std::string &response, Json::Value & root);
   static bool isSuccess(const std::string &response);
 
@@ -97,6 +97,8 @@ private:
   std::string apiCall(const std::string &function, const ApiParams_t & paramsMap, bool putSessionVar = true) const;
   bool pairDevice(Json::Value & root);
   bool deletePairing(const Json::Value & root);
+  std::string getPairFilePath() const;
+  void createPairFile(Json::Value & contentRoot) const;
 
   static const std::string API_URL[SP_END];
   static const std::string API_UNIT[SP_END];
@@ -106,6 +108,7 @@ private:
   const std::string m_userPassword;
   const std::string m_overridenMac;
   const std::string m_product;
+  const uint64_t m_instanceNo;
   std::string m_serial;
   std::string m_deviceId;
   std::string m_password;

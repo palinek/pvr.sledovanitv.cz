@@ -14,12 +14,14 @@ set(DEPLIBS ${JSONCPP_LIBRARIES})
 
 set(SLEDOVANITV_SOURCES
   src/ApiManager.cpp
-  src/Data.cpp)
+  src/Data.cpp
+  src/Addon.cpp)
 
 set(SLEDOVANITV_HEADERS
   src/ApiManager.h
   src/CallLimiter.hh
-  src/Data.h)
+  src/Data.h
+  src/Addon.h)
 
 if(WIN32)
   add_definitions("/wd4996")

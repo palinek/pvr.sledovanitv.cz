@@ -79,8 +79,9 @@ static inline unsigned DiffBetweenPragueAndLocalTime(const time_t * when = nullp
   return diff - (isdst > 0 ? 7200 : 3600);
 }
 
-Data::Data()
-  : m_bKeepAlive{true}
+Data::Data(const kodi::addon::IInstanceInfo& instance)
+  : kodi::addon::CInstancePVRClient{instance}
+  , m_bKeepAlive{true}
   , m_bLoadRecordings{true}
   , m_bChannelsLoaded{false}
   , m_groups{std::make_shared<group_container_t>()}
@@ -98,15 +99,30 @@ Data::Data()
   , m_iLastStart{0}
   , m_iLastEnd{0}
   , m_manager{
-    kodi::addon::GetSettingEnum<ApiManager::ServiceProvider_t>("serviceProvider", ApiManager::SP_DEFAULT)
-    , kodi::addon::GetSettingString("userName")
-    , kodi::addon::GetSettingString("password")
-    , kodi::addon::GetSettingString("deviceId")
-    , kodi::addon::GetSettingString("productId")
+    GetInstanceSettingEnum<ApiManager::ServiceProvider_t>("serviceProvider", ApiManager::SP_DEFAULT)
+    , GetInstanceSettingString("userName")
+    , GetInstanceSettingString("password")
+    , GetInstanceSettingString("deviceId")
+    , GetInstanceSettingString("productId")
+    , instance.GetNumber()
   }
 {
+  if (!kodi::vfs::DirectoryExists(UserPath()))
+  {
+    kodi::vfs::CreateDirectory(UserPath());
+  }
 
   SetEPGMaxDays(m_epgMaxFutureDays, m_epgMaxPastDays);
+
+  m_streamQuality = GetInstanceSettingEnum<ApiManager::StreamQuality_t>("streamQuality", ApiManager::SQ_DEFAULT);
+  m_fullChannelEpgRefresh = GetInstanceSettingInt("fullChannelEpgRefresh", 24) * 3600; // make it seconds
+  m_loadingsRefresh = GetInstanceSettingInt("loadingsRefresh", 60);
+  m_keepAliveDelay = GetInstanceSettingInt("keepAliveDelay", 20);
+  m_epgCheckDelay = GetInstanceSettingInt("epgCheckDelay", 1) * 60; // make it seconds
+  m_useH265 = GetInstanceSettingBoolean("useH265", false);
+  m_useAdaptive = GetInstanceSettingBoolean("useAdaptive", false);
+  m_showLockedChannels = GetInstanceSettingBoolean("showLockedChannels", true);
+  m_showLockedOnlyPin = GetInstanceSettingBoolean("showLockedOnlyPin", true);
 
   m_thread = std::thread{[this] { Process(); }};
 }
@@ -353,29 +369,7 @@ Data::~Data(void)
   kodi::Log(ADDON_LOG_DEBUG, "%s destructed", __FUNCTION__);
 }
 
-ADDON_STATUS Data::Create()
-{
-  kodi::Log(ADDON_LOG_DEBUG, "%s - Creating the PVR sledovanitv.cz (unofficial)", __FUNCTION__);
-
-  if (!kodi::vfs::DirectoryExists(UserPath()))
-  {
-    kodi::vfs::CreateDirectory(UserPath());
-  }
-
-  m_streamQuality = kodi::addon::GetSettingEnum<ApiManager::StreamQuality_t>("streamQuality", ApiManager::SQ_DEFAULT);
-  m_fullChannelEpgRefresh = kodi::addon::GetSettingInt("fullChannelEpgRefresh", 24) * 3600; // make it seconds
-  m_loadingsRefresh = kodi::addon::GetSettingInt("loadingsRefresh", 60);
-  m_keepAliveDelay = kodi::addon::GetSettingInt("keepAliveDelay", 20);
-  m_epgCheckDelay = kodi::addon::GetSettingInt("epgCheckDelay", 1) * 60; // make it seconds
-  m_useH265 = kodi::addon::GetSettingBoolean("useH265", false);
-  m_useAdaptive = kodi::addon::GetSettingBoolean("useAdaptive", false);
-  m_showLockedChannels = kodi::addon::GetSettingBoolean("showLockedChannels", true);
-  m_showLockedOnlyPin = kodi::addon::GetSettingBoolean("showLockedOnlyPin", true);
-
-  return ADDON_STATUS_OK;
-}
-
-ADDON_STATUS Data::SetSetting(const std::string & settingName, const kodi::addon::CSettingValue & settingValue)
+ADDON_STATUS Data::SetInstanceSetting(const std::string & settingName, const kodi::addon::CSettingValue & settingValue)
 {
   // just force our data to be re-created
   return ADDON_STATUS_NEED_RESTART;
@@ -785,8 +779,7 @@ bool Data::LoadPlayList(void)
   }
 
   kodi::Log(ADDON_LOG_INFO, "Loaded %d channels.", new_channels->size());
-  kodi::QueueFormattedNotification(QUEUE_INFO, "%d channels loaded.", new_channels->size());
-
+  kodi::QueueFormattedNotification(QUEUE_INFO, "%s - %d channels loaded.", GetInstanceSettingString("kodi_addon_instance_name").c_str(), new_channels->size());
 
   bool channels_loaded;
   {
@@ -1445,5 +1438,3 @@ bool Data::PinCheckUnlock(bool isPinLocked)
 }
 
 } // namespace sledovanitvcz
-
-ADDONCREATOR(sledovanitvcz::Data)
