@@ -55,7 +55,7 @@ namespace sledovanitvcz
       test->SetInstanceSettingString("password", kodi::addon::GetSettingString("password"));
       test->SetInstanceSettingString("deviceId", kodi::addon::GetSettingString("deviceId"));
       test->SetInstanceSettingString("productId", kodi::addon::GetSettingString("productId"));
-      test->SetInstanceSettingEnum<ApiManager::StreamQuality_t>("streamQuality", ApiManager::SQ_DEFAULT);
+      test->SetInstanceSettingEnum<ApiManager::StreamQuality_t>("streamQuality", kodi::addon::GetSettingEnum<ApiManager::StreamQuality_t>("streamQuality", ApiManager::SQ_DEFAULT));
       test->SetInstanceSettingInt("fullChannelEpgRefresh", kodi::addon::GetSettingInt("fullChannelEpgRefresh", 24));
       test->SetInstanceSettingInt("loadingsRefresh", kodi::addon::GetSettingInt("loadingsRefresh", 60));
       test->SetInstanceSettingInt("keepAliveDelay", kodi::addon::GetSettingInt("keepAliveDelay", 20));
