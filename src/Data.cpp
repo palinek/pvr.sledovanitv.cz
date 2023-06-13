@@ -36,6 +36,7 @@
 
 #include "Data.h"
 #include "CallLimiter.hh"
+#include "base64.hpp"
 #include "kodi/General.h"
 #include "kodi/Filesystem.h"
 #include "kodi/gui/dialogs/Numeric.h"
@@ -294,6 +295,7 @@ void Data::LoginLoop()
     {
       if (m_manager.login())
       {
+        registerDrm();
         ConnectionStateChange("Connected", PVR_CONNECTION_STATE_CONNECTED, "");
         break;
       }
@@ -304,6 +306,27 @@ void Data::LoginLoop()
       }
     }
     std::this_thread::sleep_for(std::chrono::seconds{1});
+  }
+}
+
+void Data::registerDrm()
+{
+  std::string licenseUrl, certificate;
+  if (!m_manager.registerDrm(licenseUrl, certificate))
+  {
+    kodi::Log(ADDON_LOG_WARNING, "DRM registration failed. DRM may not work");
+  }
+  static constexpr char url_placeholder[] = "={streamURL|base64}";
+  auto pos = licenseUrl.rfind(url_placeholder);
+  if (pos == licenseUrl.size() - sizeof(url_placeholder) + 1)
+    licenseUrl.erase(pos + 1);
+  else
+      kodi::Log(ADDON_LOG_WARNING, "Expecting DRM licenseUrl in form '...&streamURL%s', got %s. DRM may not work", url_placeholder, licenseUrl.c_str());
+  certificate = base64::to_base64(certificate);
+  {
+    std::lock_guard<std::mutex> critical(m_mutex);
+    m_drmCertificate = std::make_shared<std::string>(std::move(certificate));
+    m_drmLicenseUrl = std::make_shared<std::string>(std::move(licenseUrl));
   }
 }
 
@@ -675,9 +698,11 @@ bool Data::LoadRecordings()
     for (auto & recording : *new_recordings)
     {
       std::string channel_id;
-      recording.strStreamUrl = m_manager.getRecordingUrl(recording.strRecordId, channel_id);
+      bool isDrm;
+      recording.strStreamUrl = m_manager.getRecordingUrl(recording.strRecordId, channel_id, isDrm);
       // get the stream type based on channel
       recording.strStreamType = ChannelStreamType(channel_id);
+      recording.bIsDrm = isDrm;
     }
   }
   bool changed_t = new_timers->size() != timers->size();
@@ -752,6 +777,7 @@ bool Data::LoadPlayList(void)
     iptvchan.strGroupId = channel.get("group", "").asString();
     iptvchan.strStreamURL = channel.get("url", "").asString();
     iptvchan.strStreamType = channel.get("streamType", "").asString();
+    iptvchan.bIsDrm = channel.get("drm", "0").asInt() != 0;
     iptvchan.iUniqueId = i + 1;
     iptvchan.iChannelNumber = i + 1;
     kodi::Log(ADDON_LOG_DEBUG, "Channel#%d %s, URL: %s", iptvchan.iUniqueId, iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
@@ -849,11 +875,12 @@ PVR_ERROR Data::GetChannels(bool radio, kodi::addon::PVRChannelsResultSet& resul
 PVR_ERROR Data::GetChannelStreamProperties(const kodi::addon::PVRChannel& channel, std::vector<kodi::addon::PVRStreamProperty>& properties)
 {
   std::string streamUrl, streamType;
-  PVR_ERROR ret = GetChannelStreamUrl(channel, streamUrl, streamType);
+  bool isDrm;
+  PVR_ERROR ret = GetChannelStreamUrl(channel, streamUrl, streamType, isDrm);
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  properties = StreamProperties(streamUrl, streamType, true);
+  properties = StreamProperties(streamUrl, streamType, isDrm, true);
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -865,7 +892,7 @@ PVR_ERROR Data::GetSignalStatus(int channelUid, kodi::addon::PVRSignalStatus& si
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType)
+PVR_ERROR Data::GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType, bool & isDrm)
 {
   decltype (m_channels) channels;
   {
@@ -885,6 +912,7 @@ PVR_ERROR Data::GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std:
 
   streamUrl = channel_i->strStreamURL;
   streamType = channel_i->strStreamType;
+  isDrm = channel_i->bIsDrm;
   return PVR_ERROR_NO_ERROR;
 
 }
@@ -985,6 +1013,7 @@ static PVR_ERROR GetEPGData(const kodi::addon::PVREPGTag& tag
     , const epg_container_t * epg
     , epg_entry_container_t::const_iterator & epg_i
     , bool * isChannelPinLocked = nullptr
+    , bool * isChannelDrm = nullptr
     )
 {
   auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [tag] (const Channel & c) { return c.iUniqueId == tag.GetUniqueChannelId(); });
@@ -995,6 +1024,8 @@ static PVR_ERROR GetEPGData(const kodi::addon::PVREPGTag& tag
   }
   if (isChannelPinLocked)
     *isChannelPinLocked = channel_i->bIsPinLocked;
+  if (isChannelDrm)
+    *isChannelDrm = channel_i->bIsDrm;
 
   auto ch_epg_i = epg->find(channel_i->strId);
 
@@ -1047,15 +1078,16 @@ PVR_ERROR Data::IsEPGTagRecordable(const kodi::addon::PVREPGTag& tag, bool& isRe
 PVR_ERROR Data::GetEPGTagStreamProperties(const kodi::addon::PVREPGTag& tag, std::vector<kodi::addon::PVRStreamProperty>& properties)
 {
   std::string streamUrl, streamType;
-  PVR_ERROR ret = GetEPGStreamUrl(tag, streamUrl, streamType);
+  bool isDrm;
+  PVR_ERROR ret = GetEPGStreamUrl(tag, streamUrl, streamType, isDrm);
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  properties = StreamProperties(streamUrl, streamType, false);
+  properties = StreamProperties(streamUrl, streamType, isDrm, false);
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string & streamUrl, std::string & streamType)
+PVR_ERROR Data::GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string & streamUrl, std::string & streamType, bool & isDrm)
 {
   decltype (m_channels) channels;
   decltype (m_epg) epg;
@@ -1067,7 +1099,7 @@ PVR_ERROR Data::GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string &
 
   bool isPinLocked;
   epg_entry_container_t::const_iterator epg_i;
-  PVR_ERROR ret = GetEPGData(tag, channels.get(), epg.get(), epg_i, &isPinLocked);
+  PVR_ERROR ret = GetEPGData(tag, channels.get(), epg.get(), epg_i, &isPinLocked, &isDrm);
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
@@ -1075,7 +1107,7 @@ PVR_ERROR Data::GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string &
     return PVR_ERROR_REJECTED;
 
   if (RecordingExists(epg_i->second.strRecordId))
-    return GetRecordingStreamUrl(epg_i->second.strRecordId, streamUrl, streamType);
+    return GetRecordingStreamUrl(epg_i->second.strRecordId, streamUrl, streamType, isDrm);
 
   std::string channel_id;
   int duration;
@@ -1171,15 +1203,16 @@ PVR_ERROR Data::GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet&
 PVR_ERROR Data::GetRecordingStreamProperties(const kodi::addon::PVRRecording& recording, std::vector<kodi::addon::PVRStreamProperty>& properties)
 {
   std::string streamUrl, streamType;
-  PVR_ERROR ret = GetRecordingStreamUrl(recording.GetRecordingId(), streamUrl, streamType);
+  bool isDrm;
+  PVR_ERROR ret = GetRecordingStreamUrl(recording.GetRecordingId(), streamUrl, streamType, isDrm);
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  properties = StreamProperties(streamUrl, streamType, false);
+  properties = StreamProperties(streamUrl, streamType, isDrm, false);
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Data::GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType)
+PVR_ERROR Data::GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType, bool & isDrm)
 {
   decltype (m_recordings) recordings;
   {
@@ -1195,6 +1228,7 @@ PVR_ERROR Data::GetRecordingStreamUrl(const std::string & recording, std::string
 
   streamUrl = rec_i->strStreamUrl;
   streamType = rec_i->strStreamType;
+  isDrm = rec_i->bIsDrm;
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -1357,7 +1391,7 @@ bool Data::LoggedIn() const
   return m_manager.loggedIn();
 }
 
-std::vector<kodi::addon::PVRStreamProperty> Data::StreamProperties(const std::string & url, const std::string & streamType, bool isLive) const
+std::vector<kodi::addon::PVRStreamProperty> Data::StreamProperties(const std::string & url, const std::string & streamType, bool isDrm, bool isLive) const
 {
   static const std::set<std::string> ADAPTIVE_TYPES = {"mpd", "ism", "hls"};
 
@@ -1366,7 +1400,21 @@ std::vector<kodi::addon::PVRStreamProperty> Data::StreamProperties(const std::st
   if (m_useAdaptive && 0 < ADAPTIVE_TYPES.count(streamType))
   {
     properties.emplace_back(PVR_STREAM_PROPERTY_INPUTSTREAM, "inputstream.adaptive");
-    properties.emplace_back("inputstream.adaptive.manifest_type", streamType);
+    if (isDrm)
+    {
+      decltype (m_drmCertificate) certificate;
+      decltype (m_drmLicenseUrl) licenseUrl;
+      {
+        std::lock_guard<std::mutex> critical(m_mutex);
+        certificate = m_drmCertificate;
+        licenseUrl = m_drmLicenseUrl;
+      }
+      properties.emplace_back("inputstream.adaptive.license_type", "com.widevine.alpha");
+      properties.emplace_back("inputstream.adaptive.server_certificate", *certificate);
+      std::string license_url{*licenseUrl};
+      license_url += ApiManager::urlEncode(base64::to_base64(url));
+      properties.emplace_back("inputstream.adaptive.license_key", license_url);
+    }
   }
   if (isLive)
     properties.emplace_back(PVR_STREAM_PROPERTY_ISREALTIMESTREAM, "true");

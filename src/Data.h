@@ -81,6 +81,7 @@ struct Channel
   std::string strGroupId;
   std::string strStreamType;
   bool        bIsPinLocked;
+  bool        bIsDrm;
 };
 
 struct ChannelGroup
@@ -107,6 +108,7 @@ struct Recording
   std::string strStreamType;
   int iChannelUid;
   bool bIsPinLocked;
+  bool bIsDrm;
 };
 
 struct Timer
@@ -198,11 +200,12 @@ protected:
   std::string ChannelsList() const;
   std::string ChannelStreamType(const std::string & channelId) const;
   bool PinCheckUnlock(bool isPinLocked);
-  std::vector<kodi::addon::PVRStreamProperty> StreamProperties(const std::string & url, const std::string & streamType, bool isLive) const;
-  PVR_ERROR GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType);
-  PVR_ERROR GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string & streamUrl, std::string & streamType);
-  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType);
+  std::vector<kodi::addon::PVRStreamProperty> StreamProperties(const std::string & url, const std::string & streamType, bool isDrm, bool isLive) const;
+  PVR_ERROR GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType, bool & isDrm);
+  PVR_ERROR GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string & streamUrl, std::string & streamType, bool & isDrm);
+  PVR_ERROR GetRecordingStreamUrl(const std::string & recording, std::string & streamUrl, std::string & streamType, bool & isDrm);
   PVR_ERROR SetEPGMaxDays(int iFutureDays, int iPastDays);
+  void registerDrm();
 
 protected:
   void Process(void);
@@ -227,6 +230,8 @@ private:
   time_t m_epgMaxTime;
   int m_epgMaxFutureDays;
   int m_epgMaxPastDays;
+  std::shared_ptr<const std::string> m_drmCertificate;
+  std::shared_ptr<const std::string> m_drmLicenseUrl;
 
   // data used only by "job" thread
   bool m_bEGPLoaded;

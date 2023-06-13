@@ -35,8 +35,8 @@ SOFTWARE.
 
 namespace base64 {
 
-inline std::string get_base64_chars() {
-    static std::string base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+inline const std::string & get_base64_chars() {
+    static const std::string base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                    "abcdefghijklmnopqrstuvwxyz"
                                    "0123456789+/";
     return base64_chars;
@@ -45,7 +45,7 @@ inline std::string get_base64_chars() {
 inline std::string to_base64(std::string const &data) {
   int counter = 0;
   uint32_t bit_stream = 0;
-  const std::string base64_chars = get_base64_chars();
+  auto base64_chars = get_base64_chars();
   std::string encoded;
   int offset = 0;
   for (unsigned char c : data) {
@@ -63,7 +63,7 @@ inline std::string to_base64(std::string const &data) {
       encoded += base64_chars.at(bit_stream & 0x3f);
       bit_stream = 0;
     }
-    counter++;
+    ++counter;
   }
   if (offset == 16) {
     encoded += base64_chars.at(bit_stream >> 12 & 0x3f);
@@ -81,7 +81,7 @@ inline std::string from_base64(std::string const &data) {
   uint32_t bit_stream = 0;
   std::string decoded;
   int offset = 0;
-  const std::string base64_chars = get_base64_chars();
+  auto base64_chars = get_base64_chars();
   for (unsigned char c : data) {
     auto num_val = base64_chars.find(c);
     if (num_val != std::string::npos) {
