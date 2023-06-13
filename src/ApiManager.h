@@ -59,6 +59,7 @@ public:
   };
 public:
   static std::string formatTime(time_t t);
+  static std::string urlEncode(const std::string &str);
 
 public:
   ApiManager(ServiceProvider_t serviceProvider
@@ -75,7 +76,7 @@ public:
   bool getStreamQualities(Json::Value & root);
   bool getEpg(time_t start, bool smallDuration, const std::string & channels, Json::Value & root);
   bool getPvr(Json::Value & root);
-  std::string getRecordingUrl(const std::string &recId, std::string & channel);
+  std::string getRecordingUrl(const std::string &recId, std::string & channel, bool & isDrm);
   bool getTimeShiftInfo(const std::string &eventId
       , std::string & streamUrl
       , std::string & channel
@@ -85,9 +86,9 @@ public:
   bool keepAlive();
   bool loggedIn() const;
   bool pinUnlocked() const;
+  bool registerDrm(std::string & licenseUrl, std::string & certificate) const;
 
 private:
-  static std::string urlEncode(const std::string &str);
   static std::string readPairFile(const std::string & pairFile);
   static bool isSuccess(const std::string &response, Json::Value & root);
   static bool isSuccess(const std::string &response);

@@ -82,23 +82,6 @@ char to_hex(char code)
   return hex[code & 15];
 }
 
-char *url_encode(const char *str)
-{
-  char *pstr = (char*) str, *buf = (char *)malloc(strlen(str) * 3 + 1), *pbuf = buf;
-  while (*pstr)
-{
-  if (isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~')
-    *pbuf++ = *pstr;
-  else if (*pstr == ' ')
-    *pbuf++ = '+';
-  else
-    *pbuf++ = '%', *pbuf++ = to_hex(*pstr >> 4), *pbuf++ = to_hex(*pstr & 15);
-  pstr++;
-  }
-  *pbuf = '\0';
-  return buf;
-}
-
 #if defined(TARGET_ANDROID) && __ANDROID_API__ < 24
 // Note: declare dummy "ifaddr" functions to make this compile on pre API-24 versions
 #warning "Compiling for ANDROID with API version < 24, getting MAC addres will not be available."
@@ -212,8 +195,11 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParams_t & pa
       return std::string();
   }
   std::string url = urlPath;
-  url += '?';
-  url += buildQueryString(paramsMap, putSessionVar);
+  if (!paramsMap.empty())
+  {
+    url += '?';
+    url += buildQueryString(paramsMap, putSessionVar);
+  }
   // add User-Agent header... TODO: make it configurable
   url += "|User-Agent=okhttp%2F3.12.0";
   std::string response;
@@ -426,6 +412,32 @@ bool ApiManager::login()
   return success;
 }
 
+bool ApiManager::registerDrm(std::string & licenseUrl, std::string & certificate) const
+{
+  ApiParams_t param;
+  param.emplace_back("type", "widevine");
+
+  const std::string response = apiCall("drm-registration", param, true);
+  Json::Value root;
+  if (!isSuccess(response, root))
+      return false;
+
+  const Json::Value & info = const_cast<const Json::Value &>(root)["info"];
+  if (info["type"].asString() != "widevine")
+      kodi::Log(ADDON_LOG_WARNING, "Expected DRM type widevine, got %s. DRM may not work", info["type"].asString().c_str());
+  if (info["licenseHandler"]["requestEncoding"].asString() != "binary")
+      kodi::Log(ADDON_LOG_WARNING, "Expected DRM requestEncoding binary, got %s. DRM may not work", info["licenseHandler"]["requestEncoding"].asString().c_str());
+  if (info["licenseHandler"]["responseEncoding"].asString() != "binary")
+      kodi::Log(ADDON_LOG_WARNING, "Expected DRM responseEncoding binary, got %s. DRM may not work", info["licenseHandler"]["responseEncoding"].asString().c_str());
+  licenseUrl = info["licenseUrl"].asString();
+  if (info["licenseUrl"].empty())
+      kodi::Log(ADDON_LOG_WARNING, "Got empty DRM licenseUrl. DRM may not work");
+  certificate = call(info["certificateUrl"].asString(), ApiParams_t{}, false);
+  if (certificate.empty())
+      kodi::Log(ADDON_LOG_WARNING, "Got empty DRM certificate from %s. DRM may not work", info["certificateUrl"].asString().c_str());
+  return true;
+}
+
 bool ApiManager::pinUnlock(const std::string & pin)
 {
   ApiParams_t params;
@@ -483,7 +495,7 @@ bool ApiManager::getPvr(Json::Value & root)
   return isSuccess(apiCall("get-pvr", ApiParams_t()), root);
 }
 
-std::string ApiManager::getRecordingUrl(const std::string &recId, std::string & channel)
+std::string ApiManager::getRecordingUrl(const std::string &recId, std::string & channel, bool & isDrm)
 {
   ApiParams_t param;
   param.emplace_back("recordId", recId);
@@ -494,6 +506,7 @@ std::string ApiManager::getRecordingUrl(const std::string &recId, std::string & 
   if (isSuccess(apiCall("record-timeshift", param), root))
   {
     channel = root.get("channel", "").asString();
+    isDrm = root.get("drm", 0).asInt() != 0;
     return root.get("url", "").asString();
   }
 
@@ -559,10 +572,21 @@ bool ApiManager::loggedIn() const
 
 std::string ApiManager::urlEncode(const std::string &str)
 {
-  std::string strOut;
-  strOut.append(url_encode(str.c_str()));
-
-  return strOut;
+  std::string result;
+  for (const auto c : str)
+  {
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+      result += c;
+    else if (c == ' ')
+      result += '+';
+    else
+    {
+      result += '%';
+      result += to_hex(c >> 4);
+      result += to_hex(c & 15);
+    }
+  }
+  return result;
 }
 
 std::string ApiManager::buildQueryString(const ApiParams_t & paramMap, bool putSessionVar) const

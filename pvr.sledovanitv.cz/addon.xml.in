@@ -5,7 +5,7 @@
   name="Sledovanitv.cz Client (unofficial)"
   provider-name="palinek">
   <requires>@ADDON_DEPENDS@
-    <import addon="inputstream.adaptive" minversion="2.5.5" optional="true"/>
+    <import addon="inputstream.adaptive" minversion="20.3.9" optional="true"/>
   </requires>
   <extension
     point="kodi.pvrclient"
