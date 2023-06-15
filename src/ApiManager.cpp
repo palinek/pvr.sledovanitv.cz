@@ -460,14 +460,14 @@ bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdap
   params.emplace_back("uuid", m_serial);
   params.emplace_back("format", "m3u8");
   params.emplace_back("quality", std::to_string(quality));
-  std::string caps = useH265 ? "h265" : "";
+  std::string caps = "webvtt";
+  if (useH265)
+    caps += ",h265";
   if (useAdaptive)
-  {
-    if (!caps.empty())
-      caps += ',';
-    caps += "adaptive2";
-  }
+    caps += ",adaptive2";
   params.emplace_back("capabilities", std::move(caps));
+  params.emplace_back("drm", "widevine");
+  params.emplace_back("subtitles", "1");
   return isSuccess(apiCall("playlist", params), root);
 }
 
