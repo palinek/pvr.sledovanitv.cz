@@ -1,6 +1,6 @@
+[![License: GPL-2.0-or-later](https://img.shields.io/badge/License-GPL%20v2+-blue.svg)](LICENSE.txt)
 [![Build and run tests](https://github.com/palinek/pvr.sledovanitv.cz/actions/workflows/build.yml/badge.svg?branch=Nexus)](https://github.com/palinek/pvr.sledovanitv.cz/actions/workflows/build.yml)
-[![Build Status](https://jenkins.kodi.tv/buildStatus/icon?job=palinek%2Fpvr.sledovanitv.cz%2FNexus)](https://jenkins.kodi.tv/view/Addons/job/palinek/job/pvr.sledovanitv.cz/job/Nexus/)
-[![Build status](https://ci.appveyor.com/api/projects/status/02qaoie8tcv4klnf/branch/Nexus?svg=true)](https://ci.appveyor.com/project/palinek/pvr-sledovanitv-cz/branch/Nexus)
+[![Build Status](https://jenkins.kodi.tv/view/Addons/job/palinek/job/pvr.sledovanitv.cz/job/Nexus/badge/icon)](https://jenkins.kodi.tv/blue/organizations/jenkins/palinek%2Fpvr.sledovanitv.cz/branches/)
 
 # sledovanitv.cz PVR
 unofficial [sledovanitv.cz](https://sledovanitv.cz) PVR client addon for [Kodi](https://kodi.tv)
