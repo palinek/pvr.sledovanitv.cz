@@ -27,8 +27,8 @@
 
 ##### System Information
 <!-- Include as many relevant details about the system you experienced the bug in -->
-* pvr.sledovani.tv Version: 
-* Kodi Version:
+* pvr.sledovanitv.cz Version: 
+* Kodi Version: 
 * OS Version: 
 
 ##### Kodi's Log
