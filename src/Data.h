@@ -191,15 +191,17 @@ protected:
   //! \return true if actual update was performed
   bool LoadEPGJob();
   bool LoadRecordings();
-  bool LoadRecordingsJob();
+  template<typename Job>
+    bool SimpleLoadJob(bool & jobGuard, const Job & job);
   void SetLoadRecordings();
+  void SetLoadPlaylist();
   void LoginLoop();
   bool WaitForChannels() const;
   void TriggerFullRefresh();
   bool RecordingExists(const std::string & recordId) const;
   std::string ChannelsList() const;
   std::string ChannelStreamType(const std::string & channelId) const;
-  bool PinCheckUnlock(bool isPinLocked);
+  bool PinCheckUnlock(bool isPinLocked, bool & unlockedNow);
   std::vector<kodi::addon::PVRStreamProperty> StreamProperties(const std::string & url, const std::string & streamType, bool isDrm, bool isLive) const;
   PVR_ERROR GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType, bool & isDrm);
   PVR_ERROR GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string & streamUrl, std::string & streamType, bool & isDrm);
@@ -213,6 +215,7 @@ protected:
 private:
   bool                              m_bKeepAlive;
   bool                              m_bLoadRecordings;
+  bool                              m_bLoadPlayList;
   mutable std::mutex                m_mutex;
   bool                              m_bChannelsLoaded;
   mutable std::condition_variable   m_waitCond;

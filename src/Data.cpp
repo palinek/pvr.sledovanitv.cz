@@ -84,6 +84,7 @@ Data::Data(const kodi::addon::IInstanceInfo& instance)
   : kodi::addon::CInstancePVRClient{instance}
   , m_bKeepAlive{true}
   , m_bLoadRecordings{true}
+  , m_bLoadPlayList{true}
   , m_bChannelsLoaded{false}
   , m_groups{std::make_shared<group_container_t>()}
   , m_channels{std::make_shared<channel_container_t>()}
@@ -128,7 +129,8 @@ Data::Data(const kodi::addon::IInstanceInfo& instance)
   m_thread = std::thread{[this] { Process(); }};
 }
 
-bool Data::LoadRecordingsJob()
+template<typename Job>
+bool Data::SimpleLoadJob(bool & jobGuard, const Job & job)
 {
   if (!KeepAlive())
     return false;
@@ -136,15 +138,15 @@ bool Data::LoadRecordingsJob()
   bool load = false;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
-    if (m_bLoadRecordings)
+    if (jobGuard)
     {
       load = true;
-      m_bLoadRecordings = false;
+      jobGuard = false;
     }
   }
   if (load)
   {
-    LoadRecordings();
+    job();
   }
   return load;
 }
@@ -153,6 +155,13 @@ void Data::SetLoadRecordings()
 {
   std::lock_guard<std::mutex> critical(m_mutex);
   m_bLoadRecordings = true;
+}
+
+void Data::SetLoadPlaylist()
+{
+  std::lock_guard<std::mutex> critical(m_mutex);
+  m_bLoadPlayList = true;
+  m_bChannelsLoaded = false;
 }
 
 void Data::TriggerFullRefresh()
@@ -342,14 +351,14 @@ void Data::Process(void)
 
   LoginLoop();
 
-  LoadPlayList();
-
   bool epg_updated = false;
 
   auto keep_alive_job = getCallLimiter(std::bind(&Data::KeepAliveJob, this), std::chrono::seconds{m_keepAliveDelay}, true);
   auto trigger_full_refresh = getCallLimiter(std::bind(&Data::TriggerFullRefresh, this), std::chrono::seconds{m_fullChannelEpgRefresh}, true);
   auto trigger_load_recordings = getCallLimiter(std::bind(&Data::SetLoadRecordings, this), std::chrono::seconds{m_loadingsRefresh}, true);
   auto epg_dummy_trigger = getCallLimiter([] {}, std::chrono::seconds{m_epgCheckDelay}, false); // using the CallLimiter just to test if the epg should be done
+  auto load_playlist_job = std::bind(&Data::LoadPlayList, this);
+  auto load_recordings_job = std::bind(&Data::LoadRecordings, this);
 
   bool work_done = true;
   while (KeepAlive())
@@ -359,8 +368,8 @@ void Data::Process(void)
 
     work_done = false;
 
-    work_done |= LoadRecordingsJob();
-
+    work_done |= SimpleLoadJob(m_bLoadPlayList, load_playlist_job);
+    work_done |= SimpleLoadJob(m_bLoadRecordings, load_recordings_job);
     // trigger full refresh once a time
     work_done |= trigger_full_refresh.Call();
     // trigger loading of recordings once a time
@@ -806,19 +815,15 @@ bool Data::LoadPlayList(void)
   kodi::Log(ADDON_LOG_INFO, "Loaded %d channels.", new_channels->size());
   kodi::QueueFormattedNotification(QUEUE_INFO, "%s - %d channels loaded.", GetInstanceSettingString("kodi_addon_instance_name").c_str(), new_channels->size());
 
-  bool channels_loaded;
   {
     std::lock_guard<std::mutex> critical(m_mutex);
     m_channels = std::move(new_channels);
     m_groups = std::move(new_groups);
-    channels_loaded = m_bChannelsLoaded;
+    m_bChannelsLoaded = true;
   }
   m_waitCond.notify_all();
-  if (channels_loaded)
-  {
-    TriggerChannelUpdate();
-    TriggerChannelGroupsUpdate();
-  }
+  TriggerChannelUpdate();
+  TriggerChannelGroupsUpdate();
 
   return true;
 }
@@ -864,10 +869,6 @@ PVR_ERROR Data::GetChannels(bool radio, kodi::addon::PVRChannelsResultSet& resul
     }
   }
 
-  {
-    std::lock_guard<std::mutex> critical(m_mutex);
-    m_bChannelsLoaded = true;
-  }
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -893,21 +894,32 @@ PVR_ERROR Data::GetSignalStatus(int channelUid, kodi::addon::PVRSignalStatus& si
 
 PVR_ERROR Data::GetChannelStreamUrl(const kodi::addon::PVRChannel& channel, std::string & streamUrl, std::string & streamType, bool & isDrm)
 {
-  decltype (m_channels) channels;
-  {
-    std::lock_guard<std::mutex> critical(m_mutex);
-    channels = m_channels;
-  }
+  decltype (m_channels->cbegin()) channel_i;
+  auto chan_getter = [this, &channel, &channel_i]() -> bool {
+    decltype (m_channels) channels;
+    {
+      std::lock_guard<std::mutex> critical(m_mutex);
+      channels = m_channels;
+    }
 
-  auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [channel] (const Channel & c) { return c.iUniqueId == channel.GetUniqueId(); });
-  if (channels->cend() == channel_i)
+    channel_i = std::find_if(channels->cbegin(), channels->cend(), [&channel] (const Channel & c) { return c.iUniqueId == channel.GetUniqueId(); });
+    return channels->cend() != channel_i;
+  };
+  if (!chan_getter())
   {
     kodi::Log(ADDON_LOG_INFO, "%s can't find channel %d", __FUNCTION__, channel.GetUniqueId());
     return PVR_ERROR_INVALID_PARAMETERS;
   }
 
-  if (!PinCheckUnlock(channel_i->bIsPinLocked))
+  bool unlocked_now = false;
+  if (!PinCheckUnlock(channel_i->bIsPinLocked, unlocked_now))
     return PVR_ERROR_REJECTED;
+
+  if (unlocked_now) {
+    // reget the data
+    if (!chan_getter())
+      return PVR_ERROR_INVALID_PARAMETERS;
+  }
 
   streamUrl = channel_i->strStreamURL;
   streamType = channel_i->strStreamType;
@@ -1102,7 +1114,8 @@ PVR_ERROR Data::GetEPGStreamUrl(const kodi::addon::PVREPGTag& tag, std::string &
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
-  if (!PinCheckUnlock(isPinLocked))
+  bool unlocked_now = false;
+  if (!PinCheckUnlock(isPinLocked, unlocked_now))
     return PVR_ERROR_REJECTED;
 
   if (RecordingExists(epg_i->second.strRecordId))
@@ -1222,7 +1235,8 @@ PVR_ERROR Data::GetRecordingStreamUrl(const std::string & recording, std::string
   if (recordings->cend() == rec_i)
     return PVR_ERROR_INVALID_PARAMETERS;
 
-  if (!PinCheckUnlock(rec_i->bIsPinLocked))
+  bool unlocked_now = false;
+  if (!PinCheckUnlock(rec_i->bIsPinLocked, unlocked_now))
     return PVR_ERROR_REJECTED;
 
   streamUrl = rec_i->strStreamUrl;
@@ -1458,8 +1472,9 @@ std::string Data::ChannelStreamType(const std::string & channelId) const
   return stream_type;
 }
 
-bool Data::PinCheckUnlock(bool isPinLocked)
+bool Data::PinCheckUnlock(bool isPinLocked, bool & unlockedNow)
 {
+  unlockedNow = false;
   if (!isPinLocked)
     return true;
 
@@ -1473,6 +1488,9 @@ bool Data::PinCheckUnlock(bool isPinLocked)
         kodi::Log(ADDON_LOG_ERROR, "PIN-unlocking failed");
         return false;
       }
+      unlockedNow = true;
+      SetLoadPlaylist();
+      WaitForChannels();
     } else
     {
       kodi::Log(ADDON_LOG_ERROR, "PIN-entering cancelled");
