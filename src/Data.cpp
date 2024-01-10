@@ -611,7 +611,6 @@ bool Data::LoadRecordings()
     std::string directory;
     if (locked != "none")
     {
-      //Note: std::make_unique is available from c++14
       directory = kodi::addon::GetLocalizedString(30201);
       directory += " - ";
       directory += locked;
@@ -1466,7 +1465,6 @@ bool Data::PinCheckUnlock(bool isPinLocked)
 
   if (!m_manager.pinUnlocked())
   {
-    //Note: std::make_unique is available from c++14
     std::string pin;
     if (kodi::gui::dialogs::Numeric::ShowAndGetNumber(pin, kodi::addon::GetLocalizedString(30202)))
     {
