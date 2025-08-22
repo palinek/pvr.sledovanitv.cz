@@ -1413,6 +1413,7 @@ std::vector<kodi::addon::PVRStreamProperty> Data::StreamProperties(const std::st
   if (m_useAdaptive && 0 < ADAPTIVE_TYPES.count(streamType))
   {
     properties.emplace_back(PVR_STREAM_PROPERTY_INPUTSTREAM, "inputstream.adaptive");
+    properties.emplace_back("inputstream.adaptive.manifest_config", "{\"live_delay\":30}");
     if (isDrm)
     {
       decltype (m_drmCertificate) certificate;
