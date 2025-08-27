@@ -618,7 +618,19 @@ std::string ApiManager::getPairFilePath() const
 {
   std::ostringstream os;
   os << PAIR_FILE << '-' << m_instanceNo;
-  return kodi::addon::GetUserPath(os.str());
+  // Note: the GetUserPath(x) does not correctly concatenate paths, if the base path ends with a '/'
+  std::string path = kodi::addon::GetUserPath();
+  if (!path.empty())
+  {
+    if (*path.crbegin() != '/' && *path.crbegin() != '\\')
+#ifdef TARGET_WINDOWS
+      path += '\\';
+#else
+      path += '/';
+#endif
+  }
+  path += os.str();
+  return path;
 }
 
 std::string ApiManager::readPairFile(const std::string & pairFile)
@@ -628,7 +640,7 @@ std::string ApiManager::readPairFile(const std::string & pairFile)
   kodi::Log(ADDON_LOG_DEBUG, "Openning file %s", pairFile.c_str());
 
   kodi::vfs::CFile fileHandle;
-  if (fileHandle.OpenFile(pairFile, 0))
+  if (fileHandle.OpenFile(pairFile))
   {
     char buffer[1024];
     while (int bytesRead = fileHandle.Read(buffer, 1024))
