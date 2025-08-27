@@ -1421,11 +1421,17 @@ std::vector<kodi::addon::PVRStreamProperty> Data::StreamProperties(const std::st
         certificate = m_drmCertificate;
         licenseUrl = m_drmLicenseUrl;
       }
-      properties.emplace_back("inputstream.adaptive.license_type", "com.widevine.alpha");
-      properties.emplace_back("inputstream.adaptive.server_certificate", *certificate);
-      std::string license_url{*licenseUrl};
-      license_url += ApiManager::urlEncode(base64::to_base64(url));
-      properties.emplace_back("inputstream.adaptive.license_key", license_url);
+      json drm_cfg = {
+        { "com.widevine.alpha", {
+            { "license", {
+                { "server_certificate", *certificate }
+                , { "server_url", *licenseUrl + ApiManager::urlEncode(base64::to_base64(url))}
+              }
+            }
+          }
+        }
+      };
+      properties.emplace_back("inputstream.adaptive.drm", drm_cfg.dump());
     }
   }
   if (isLive)
