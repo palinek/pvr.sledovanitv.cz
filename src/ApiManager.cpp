@@ -24,7 +24,8 @@
  *
  */
 
-#include <json/json.h>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 #if defined(TARGET_POSIX)
 #include <unistd.h>
 #endif
@@ -226,47 +227,46 @@ std::string ApiManager::apiCall(const std::string &function, const ApiParams_t &
   return call(url, paramsMap, putSessionVar);
 }
 
-bool ApiManager::isSuccess(const std::string &response, Json::Value & root)
+bool ApiManager::isSuccess(const std::string &response, json & root)
 {
-  std::string jsonReaderError;
-  Json::CharReaderBuilder jsonReaderBuilder;
-  std::unique_ptr<Json::CharReader> const reader(jsonReaderBuilder.newCharReader());
-
-  if (reader->parse(response.c_str(), response.c_str() + response.size(), &root, &jsonReaderError))
+  try
   {
-    bool success = root.get("status", 0).asInt() == 1;
-    if (!success)
-      kodi::Log(ADDON_LOG_ERROR, "Error indicated in response. status: %d, error: %s", root.get("status", 0).asInt(), root.get("error", "").asString().c_str());
-    return success;
-  }
+    root = json::parse(response);
 
-  kodi::Log(ADDON_LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", std::min(response.size(), static_cast<size_t>(1024)), response.c_str(), jsonReaderError.c_str());
-  return false;
+    bool success = root.value("status", 0) == 1;
+    if (!success)
+      kodi::Log(ADDON_LOG_ERROR, "Error indicated in response. status: %d, error: %s", root.value("status", 0), root.value("error", std::string{}).c_str());
+    return success;
+  } catch (const json::parse_error & e)
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Error parsing response. Response is: %*s, reader error: %s", std::min(response.size(), static_cast<size_t>(1024)), response.c_str(), e.what());
+    return false;
+  }
 }
 
 bool ApiManager::isSuccess(const std::string &response)
 {
-  Json::Value root;
+  json root;
   return isSuccess(response, root);
 }
 
-bool ApiManager::deletePairing(const Json::Value & root)
+bool ApiManager::deletePairing(const json & root)
 {
   // try to delete pairing
-  const std::string old_dev_id = root.get("deviceId", "").asString();
+  const std::string old_dev_id = root.is_null() ? "" : root.value("deviceId", "");
   if (old_dev_id.empty())
     return true; // no previous pairing
 
-  const std::string old_password = root.get("password", "").asString();
+  const std::string old_password = root.value("password", "");
   ApiParams_t params;
   params.emplace_back("deviceId", old_dev_id);
   params.emplace_back("password", old_password);
   params.emplace_back("unit", API_UNIT[m_serviceProvider]);
   const std::string response = apiCall("delete-pairing", params, false);
-  Json::Value del_root;
+  json del_root;
   if (isSuccess(response, del_root)
-      || (del_root.get("error", "").asString() == "no device")
-      || (del_root.get("error", "").asString() == "not logged")
+      || (del_root.value("error", "") == "no device")
+      || (del_root.value("error", "") == "not logged")
       )
   {
     kodi::Log(ADDON_LOG_INFO, "Previous pairing(deviceId:%s) deleted (or no such device)", old_dev_id.c_str());
@@ -276,10 +276,11 @@ bool ApiManager::deletePairing(const Json::Value & root)
   return false;
 }
 
-bool ApiManager::pairDevice(Json::Value & root)
+bool ApiManager::pairDevice(json & root)
 {
   bool new_pairing = false;
   std::string pairJson = readPairFile(getPairFilePath());
+  kodi::Log(ADDON_LOG_INFO, "Cached pairing info: %s", pairJson.c_str());
 
   std::string macAddr = m_overridenMac.empty() ? get_mac_address() : m_overridenMac;
   if (macAddr.empty())
@@ -294,8 +295,8 @@ bool ApiManager::pairDevice(Json::Value & root)
 
 
   if (pairJson.empty() || !isSuccess(pairJson, root)
-      || root.get("userName", "").asString() != m_userName
-      || root.get("serial", "").asString() != m_serial
+      || root.value("userName", "") != m_userName
+      || root.value("serial", "") != m_serial
       )
   {
     // remove pairing if any exising
@@ -326,8 +327,8 @@ bool ApiManager::pairDevice(Json::Value & root)
 
   if (isSuccess(pairJson, root))
   {
-    int devId = root.get("deviceId", 0).asInt();
-    std::string passwd = root.get("password", "").asString();
+    int devId = root.value("deviceId", 0);
+    std::string passwd = root.value("password", "");
 
     char buf[256];
     sprintf(buf, "%d", devId);
@@ -358,7 +359,7 @@ bool ApiManager::pairDevice(Json::Value & root)
 bool ApiManager::login()
 {
   m_pinUnlocked = false;
-  Json::Value pairing_root;
+  json pairing_root;
   if (m_deviceId.empty() && m_password.empty())
   {
     if (!pairDevice(pairing_root))
@@ -375,13 +376,13 @@ bool ApiManager::login()
   param.emplace_back("lang", "en");
   param.emplace_back("unit", API_UNIT[m_serviceProvider]);
 
-  Json::Value root;
+  json root;
 
   std::string new_session_id;
   const std::string response = apiCall("device-login", param, false);
   if (isSuccess(response, root))
   {
-    new_session_id = root.get("PHPSESSID", "").asString();
+    new_session_id = root.value("PHPSESSID", "");
 
     if (new_session_id.empty())
     {
@@ -418,23 +419,23 @@ bool ApiManager::registerDrm(std::string & licenseUrl, std::string & certificate
   param.emplace_back("type", "widevine");
 
   const std::string response = apiCall("drm-registration", param, true);
-  Json::Value root;
+  json root;
   if (!isSuccess(response, root))
       return false;
 
-  const Json::Value & info = const_cast<const Json::Value &>(root)["info"];
-  if (info["type"].asString() != "widevine")
-      kodi::Log(ADDON_LOG_WARNING, "Expected DRM type widevine, got %s. DRM may not work", info["type"].asString().c_str());
-  if (info["licenseHandler"]["requestEncoding"].asString() != "binary")
-      kodi::Log(ADDON_LOG_WARNING, "Expected DRM requestEncoding binary, got %s. DRM may not work", info["licenseHandler"]["requestEncoding"].asString().c_str());
-  if (info["licenseHandler"]["responseEncoding"].asString() != "binary")
-      kodi::Log(ADDON_LOG_WARNING, "Expected DRM responseEncoding binary, got %s. DRM may not work", info["licenseHandler"]["responseEncoding"].asString().c_str());
-  licenseUrl = info["licenseUrl"].asString();
-  if (info["licenseUrl"].empty())
+  const json & info = root.value("info", json{{}});
+  if (info.value("type", "") != "widevine")
+      kodi::Log(ADDON_LOG_WARNING, "Expected DRM type widevine, got %s. DRM may not work", info.value("type", "").c_str());
+  if (info.value("licenseHandler", json{{}}).value("requestEncoding", "") != "binary")
+      kodi::Log(ADDON_LOG_WARNING, "Expected DRM requestEncoding binary, got %s. DRM may not work", info.value("licenseHandler", json{{}}).value("requestEncoding", "").c_str());
+  if (info.value("licenseHandler", json{{}}).value("responseEncoding", "") != "binary")
+      kodi::Log(ADDON_LOG_WARNING, "Expected DRM responseEncoding binary, got %s. DRM may not work", info.value("licenseHandler", json{{}}).value("responseEncoding", "").c_str());
+  licenseUrl = info.value("licenseUrl", "");
+  if (licenseUrl.empty())
       kodi::Log(ADDON_LOG_WARNING, "Got empty DRM licenseUrl. DRM may not work");
-  certificate = call(info["certificateUrl"].asString(), ApiParams_t{}, false);
+  certificate = call(info.value("certificateUrl", ""), ApiParams_t{}, false);
   if (certificate.empty())
-      kodi::Log(ADDON_LOG_WARNING, "Got empty DRM certificate from %s. DRM may not work", info["certificateUrl"].asString().c_str());
+      kodi::Log(ADDON_LOG_WARNING, "Got empty DRM certificate from %s. DRM may not work", info.value("certificateUrl", "").c_str());
   return true;
 }
 
@@ -454,7 +455,7 @@ bool ApiManager::pinUnlocked() const
   return m_pinUnlocked;
 }
 
-bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root)
+bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, json & root)
 {
   ApiParams_t params;
   params.emplace_back("uuid", m_serial);
@@ -471,12 +472,12 @@ bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdap
   return isSuccess(apiCall("playlist", params), root);
 }
 
-bool ApiManager::getStreamQualities(Json::Value & root)
+bool ApiManager::getStreamQualities(json & root)
 {
     return isSuccess(apiCall("get-stream-qualities", ApiParams_t{}), root);
 }
 
-bool ApiManager::getEpg(time_t start, bool smallDuration, const std::string & channels, Json::Value & root)
+bool ApiManager::getEpg(time_t start, bool smallDuration, const std::string & channels, json & root)
 {
   ApiParams_t params;
 
@@ -490,7 +491,7 @@ bool ApiManager::getEpg(time_t start, bool smallDuration, const std::string & ch
   return isSuccess(apiCall("epg", params), root);
 }
 
-bool ApiManager::getPvr(Json::Value & root)
+bool ApiManager::getPvr(json & root)
 {
   return isSuccess(apiCall("get-pvr", ApiParams_t()), root);
 }
@@ -501,13 +502,13 @@ std::string ApiManager::getRecordingUrl(const std::string &recId, std::string & 
   param.emplace_back("recordId", recId);
   param.emplace_back("format", "m3u8");
 
-  Json::Value root;
+  json root;
 
   if (isSuccess(apiCall("record-timeshift", param), root))
   {
-    channel = root.get("channel", "").asString();
-    isDrm = root.get("drm", 0).asInt() != 0;
-    return root.get("url", "").asString();
+    channel = root.value("channel", "");
+    isDrm = root.value("drm", 0) != 0;
+    return root.value("url", "");
   }
 
   return "";
@@ -522,13 +523,13 @@ bool ApiManager::getTimeShiftInfo(const std::string &eventId
   param.emplace_back("eventId", eventId);
   param.emplace_back("format", "m3u8");
 
-  Json::Value root;
+  json root;
 
   if (isSuccess(apiCall("event-timeshift", param), root))
   {
-    streamUrl = root.get("url", "").asString();
-    channel = root.get("channel", "").asString();
-    duration = root.get("duration", 0).asInt();
+    streamUrl = root.value("url", "");
+    channel = root.value("channel", "");
+    duration = root.value("duration", 0);
     return true;
   }
 
@@ -540,11 +541,11 @@ bool ApiManager::addTimer(const std::string &eventId, std::string & recordId)
   ApiParams_t param;
   param.emplace_back("eventId", eventId);
 
-  Json::Value root;
+  json root;
 
   if (isSuccess(apiCall("record-event", param), root))
   {
-    recordId = root.get("recordId", "").asString();
+    recordId = root.value("recordId", "");
     return true;
   }
   return false;
@@ -631,13 +632,13 @@ std::string ApiManager::readPairFile(const std::string & pairFile)
   {
     char buffer[1024];
     while (int bytesRead = fileHandle.Read(buffer, 1024))
-    strContent.append(buffer, bytesRead);
+      strContent.append(buffer, bytesRead);
   }
 
   return strContent;
 }
 
-void ApiManager::createPairFile(Json::Value & contentRoot) const
+void ApiManager::createPairFile(json & contentRoot) const
 {
   kodi::vfs::CFile fileHandle;
   if (fileHandle.OpenFileForWrite(getPairFilePath(), true))

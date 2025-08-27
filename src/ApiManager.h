@@ -30,11 +30,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-
-namespace Json
-{
-  class Value;
-}
+#include <nlohmann/json_fwd.hpp>
 
 namespace sledovanitvcz
 {
@@ -72,10 +68,10 @@ public:
 
   bool login();
   bool pinUnlock(const std::string & pin);
-  bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, Json::Value & root);
-  bool getStreamQualities(Json::Value & root);
-  bool getEpg(time_t start, bool smallDuration, const std::string & channels, Json::Value & root);
-  bool getPvr(Json::Value & root);
+  bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, nlohmann::json & root);
+  bool getStreamQualities(nlohmann::json & root);
+  bool getEpg(time_t start, bool smallDuration, const std::string & channels, nlohmann::json & root);
+  bool getPvr(nlohmann::json & root);
   std::string getRecordingUrl(const std::string &recId, std::string & channel, bool & isDrm);
   bool getTimeShiftInfo(const std::string &eventId
       , std::string & streamUrl
@@ -90,16 +86,16 @@ public:
 
 private:
   static std::string readPairFile(const std::string & pairFile);
-  static bool isSuccess(const std::string &response, Json::Value & root);
+  static bool isSuccess(const std::string &response, nlohmann::json & root);
   static bool isSuccess(const std::string &response);
 
   std::string buildQueryString(const ApiParams_t & paramMap, bool putSessionVar) const;
   std::string call(const std::string & urlPath, const ApiParams_t & paramsMap, bool putSessionVar) const;
   std::string apiCall(const std::string &function, const ApiParams_t & paramsMap, bool putSessionVar = true) const;
-  bool pairDevice(Json::Value & root);
-  bool deletePairing(const Json::Value & root);
+  bool pairDevice(nlohmann::json & root);
+  bool deletePairing(const nlohmann::json & root);
   std::string getPairFilePath() const;
-  void createPairFile(Json::Value & contentRoot) const;
+  void createPairFile(nlohmann::json & contentRoot) const;
 
   static const std::string API_URL[SP_END];
   static const std::string API_UNIT[SP_END];

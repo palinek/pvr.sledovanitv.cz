@@ -27,9 +27,8 @@
 #include <set>
 #include <sstream>
 #include <string>
-#include <fstream>
-#include <iostream>
-#include <json/json.h>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 #include <chrono>
 #include <algorithm>
 #include <functional>
@@ -465,7 +464,7 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
   if (m_bEGPLoaded && m_iLastStart != 0 && iStart >= m_iLastStart && iStart + step <= m_iLastEnd)
     return false;
 
-  Json::Value root;
+  json root;
 
   if (!m_manager.getEpg(iStart, bSmallStep, std::string() /*ChannelsList()*/, root))
   {
@@ -499,11 +498,10 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
 
   auto epg_copy = std::make_shared<epg_container_t>(*epg);
 
-  Json::Value json_channels = root["channels"];
-  Json::Value::Members chIds = json_channels.getMemberNames();
-  for (Json::Value::Members::iterator i = chIds.begin(); i != chIds.end(); i++)
+  json json_channels = root.value("channels", json{{}});
+  for (auto i = json_channels.cbegin(); i != json_channels.cend(); i++)
   {
-    std::string strChId = *i;
+    const std::string & strChId = i.key();
 
     const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&strChId] (const Channel & ch) { return ch.strId == strChId; });
     if (channel_i != channels->cend())
@@ -511,33 +509,33 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
       EpgChannel & epgChannel = (*epg_copy)[strChId];
       epgChannel.strId = strChId;
 
-      Json::Value epgData = json_channels[strChId];
-      for (unsigned int j = 0; j < epgData.size(); j++)
+      const json & epgData = i.value();
+      for (auto j = epgData.cbegin(); j != epgData.cend(); ++j)
       {
-        Json::Value epgEntry = epgData[j];
+        const json & epgEntry = *j;
 
-        const time_t start_time = ParseDateTime(epgEntry.get("startTime", "").asString());
-        const time_t end_time = ParseDateTime(epgEntry.get("endTime", "").asString());
+        const time_t start_time = ParseDateTime(epgEntry.value("startTime", ""));
+        const time_t end_time = ParseDateTime(epgEntry.value("endTime", ""));
         EpgEntry iptventry;
         iptventry.iBroadcastId = start_time; // unique id for channel (even if time_t is wider, int should be enough for short period of time)
         iptventry.iGenreType = 0;
         iptventry.iGenreSubType = 0;
         iptventry.iChannelId = channel_i->iUniqueId;
-        iptventry.strTitle = epgEntry.get("title", "").asString();
-        iptventry.strPlot = epgEntry.get("description", "").asString();
+        iptventry.strTitle = epgEntry.value("title", "");
+        iptventry.strPlot = epgEntry.value("description", "");
         iptventry.startTime = start_time;
         iptventry.endTime = end_time;
-        iptventry.strEventId = epgEntry.get("eventId", "").asString();
-        iptventry.strIconPath = epgEntry.get("poster", "").asString();
-        std::string availability = epgEntry.get("availability", "none").asString();
+        iptventry.strEventId = epgEntry.value("eventId", "");
+        iptventry.strIconPath = epgEntry.value("poster", "");
+        std::string availability = epgEntry.value("availability", "none");
         iptventry.availableTimeshift = availability == "timeshift" || availability == "pvr";
-        iptventry.strRecordId = epgEntry["recordId"].asString();
-        iptventry.starRating = round(epgEntry.get("score", 0.0).asDouble());
-        const Json::Value parent_rating{epgEntry.get("ratingAge", Json::nullValue)};
-        iptventry.parentalRating = parent_rating.isNumeric() ? parent_rating.asInt() : 0;
+        iptventry.strRecordId = epgEntry.value("recordId", "");
+        iptventry.starRating = round(epgEntry.value("score", 0.0));
+        const json & parent_rating = epgEntry.value("ratingAge", json{json::value_t::null});
+        iptventry.parentalRating = parent_rating.is_number() ? parent_rating.get<int>() : 0;
 
         kodi::Log(ADDON_LOG_DEBUG, "Loading TV show: %s - %s, start=%s(epoch=%llu)", strChId.c_str(), iptventry.strTitle.c_str()
-            , epgEntry.get("startTime", "").asString().c_str(), static_cast<long long unsigned>(start_time));
+            , epgEntry.value("startTime", "").c_str(), static_cast<long long unsigned>(start_time));
 
         // notify about the epg change...and store it
         kodi::addon::PVREPGTag tag;
@@ -600,7 +598,7 @@ bool Data::LoadRecordings()
   long long available_duration = 0;
   long long recorded_duration = 0;
 
-  Json::Value root;
+  json root;
 
   if (!m_manager.getPvr(root))
   {
@@ -608,15 +606,16 @@ bool Data::LoadRecordings()
     return false;
   }
 
-  available_duration = root["summary"].get("availableDuration", 0).asInt() / 60 * 1024; //report minutes as MB
-  recorded_duration = root["summary"].get("recordedDuration", 0).asInt() / 60 * 1024;
+  const json & summary = root.value("summary", json{{}});
+  available_duration = summary.value("availableDuration", 0) / 60 * 1024; //report minutes as MB
+  recorded_duration = summary.value("recordedDuration", 0) / 60 * 1024;
 
-  Json::Value records = root["records"];
-  for (unsigned int i = 0; i < records.size(); i++)
+  const json & records = root.value("records", json{{}});
+  for (auto i = records.cbegin(); i != records.end(); ++i)
   {
-    Json::Value record = records[i];
-    const std::string title = record.get("title", "").asString();
-    const std::string locked = record.get("channelLocked", "none").asString();
+    const json & record = *i;
+    const std::string title = record.value("title", "");
+    const std::string locked = record.value("channelLocked", "none");
     std::string directory;
     if (locked != "none")
     {
@@ -625,20 +624,18 @@ bool Data::LoadRecordings()
       directory += locked;
       kodi::Log(ADDON_LOG_INFO, "Timer/recording '%s' is locked(%s)", title.c_str(), locked.c_str());
     }
-    std::string str_ch_id = record.get("channel", "").asString();
+    std::string str_ch_id = record.value("channel", "");
     const auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&str_ch_id] (const Channel & ch) { return ch.strId == str_ch_id; });
     Recording iptvrecording;
     Timer iptvtimer;
-    time_t startTime = ParseDateTime(record.get("startTime", "").asString());
-    int duration = record.get("duration", 0).asInt();
+    time_t startTime = ParseDateTime(record.value("startTime", ""));
+    int duration = record.value("duration", 0);
     time_t now;
     time(&now);
 
     if ((startTime + duration) < now)
     {
-      char buf[256];
-      sprintf(buf, "%d", record.get("id", 0).asInt());
-      iptvrecording.strRecordId = buf;
+      iptvrecording.strRecordId = record.value("id", "0");
       iptvrecording.strTitle = std::move(title);
 
       if (channel_i != channels->cend())
@@ -650,10 +647,10 @@ bool Data::LoadRecordings()
         iptvrecording.iChannelUid = PVR_CHANNEL_INVALID_UID;
       }
       iptvrecording.startTime = startTime;
-      iptvrecording.strPlotOutline = record.get("event", "").get("description", "").asString();
+      iptvrecording.strPlotOutline = record.value("event", json{{}}).value("description", "");
       iptvrecording.duration = duration;
       iptvrecording.bRadio = channel_i->bIsRadio;
-      iptvrecording.iLifeTime = (ParseDateTime(record.get("expires", "").asString() + "00:00") - now) / 86400;
+      iptvrecording.iLifeTime = (ParseDateTime(record.value("expires", "") + "00:00") - now) / 86400;
       iptvrecording.strDirectory = std::move(directory);
       iptvrecording.bIsPinLocked = locked == "pin";
 
@@ -663,13 +660,13 @@ bool Data::LoadRecordings()
     }
     else
     {
-      iptvtimer.iClientIndex = record.get("id", 0).asInt();
+      iptvtimer.iClientIndex = record.value("id", 0);
       if (channel_i != channels->cend())
       {
         iptvtimer.iClientChannelUid = channel_i->iUniqueId;
       }
-      iptvtimer.startTime = ParseDateTime(record.get("startTime", "").asString());
-      iptvtimer.endTime = iptvtimer.startTime + record.get("duration", 0).asInt();
+      iptvtimer.startTime = ParseDateTime(record.value("startTime", ""));
+      iptvtimer.endTime = iptvtimer.startTime + record.value("duration", 0);
 
       if (startTime < now && (startTime + duration) >= now)
       {
@@ -680,7 +677,7 @@ bool Data::LoadRecordings()
         iptvtimer.state = PVR_TIMER_STATE_SCHEDULED;
       }
       iptvtimer.strTitle = std::move(title);
-      iptvtimer.iLifeTime = (ParseDateTime(record.get("expires", "").asString() + "00:00") - now) / 86400;
+      iptvtimer.iLifeTime = (ParseDateTime(record.value("expires", "") + "00:00") - now) / 86400;
       iptvtimer.strDirectory = std::move(directory);
 
       kodi::Log(ADDON_LOG_DEBUG, "Loading timer '%s'", iptvtimer.strTitle.c_str());
@@ -749,7 +746,7 @@ bool Data::LoadPlayList(void)
   if (!KeepAlive())
     return false;
 
-  Json::Value root;
+  json root;
 
   if (!m_manager.getPlaylist(m_streamQuality, m_useH265, m_useAdaptive, root))
   {
@@ -764,49 +761,50 @@ bool Data::LoadPlayList(void)
 
   //channels
   auto new_channels = std::make_shared<channel_container_t>();
-  Json::Value channels = root["channels"];
-  for (unsigned int i = 0; i < channels.size(); i++)
+  const json & channels = root.value("channels", json{{}});
+  int ch_number = 1;
+  for (auto i = channels.cbegin(); i != channels.cend(); ++i, ++ch_number)
   {
-    Json::Value channel = channels[i];
-    const std::string locked = channel.get("locked", "none").asString();
+    const json & channel = *i;
+    const std::string locked = channel.value("locked", "none");
     if (locked != "none")
     {
       if (!m_showLockedChannels || (m_showLockedOnlyPin && locked != "pin"))
       {
-        kodi::Log(ADDON_LOG_INFO, "Skipping locked(%s) channel#%u %s", locked.c_str(), i + 1, channel.get("name", "").asString().c_str());
+        kodi::Log(ADDON_LOG_INFO, "Skipping locked(%s) channel#%u %s", locked.c_str(), ch_number, channel.value("name", "").c_str());
         continue;
       }
     }
 
     Channel iptvchan;
 
-    iptvchan.strId = channel.get("id", "").asString();
-    iptvchan.strChannelName = channel.get("name", "").asString();
-    iptvchan.strGroupId = channel.get("group", "").asString();
-    iptvchan.strStreamURL = channel.get("url", "").asString();
-    iptvchan.strStreamType = channel.get("streamType", "").asString();
-    iptvchan.bIsDrm = channel.get("drm", "0").asInt() != 0;
-    iptvchan.iUniqueId = i + 1;
-    iptvchan.iChannelNumber = i + 1;
+    iptvchan.strId = channel.value("id", "");
+    iptvchan.strChannelName = channel.value("name", "");
+    iptvchan.strGroupId = channel.value("group", "");
+    iptvchan.strStreamURL = channel.value("url", "");
+    iptvchan.strStreamType = channel.value("streamType", "");
+    iptvchan.bIsDrm = channel.value("drm", 0) != 0;
+    iptvchan.iUniqueId = ch_number;
+    iptvchan.iChannelNumber = ch_number;
     kodi::Log(ADDON_LOG_DEBUG, "Channel#%d %s, URL: %s", iptvchan.iUniqueId, iptvchan.strChannelName.c_str(), iptvchan.strStreamURL.c_str());
-    iptvchan.strIconPath = channel.get("logoUrl", "").asString();
-    iptvchan.bIsRadio = channel.get("type", "").asString() != "tv";
+    iptvchan.strIconPath = channel.value("logoUrl", "");
+    iptvchan.bIsRadio = channel.value("type", "") != "tv";
     iptvchan.bIsPinLocked = locked == "pin";
 
     new_channels->push_back(iptvchan);
   }
 
   auto new_groups = std::make_shared<group_container_t>();
-  Json::Value groups = root["groups"];
-  for (const auto & group_id : groups.getMemberNames())
+  const json & groups = root.value("groups", json{{}});
+  for (auto i = groups.cbegin(); i != groups.cend(); ++i)
   {
     ChannelGroup group;
     group.bRadio = false; // currently there is no way to distinguish group types in the returned json
-    group.strGroupId = group_id;
-    group.strGroupName = groups[group_id].asString();
+    group.strGroupId = i.key();
+    group.strGroupName = i.value();
     for (const auto & channel : *new_channels)
     {
-      if (channel.strGroupId == group_id && !channel.bIsRadio)
+      if (channel.strGroupId == i.key() && !channel.bIsRadio)
         group.members.push_back(channel.iUniqueId);
     }
     new_groups->push_back(std::move(group));
