@@ -50,6 +50,10 @@ msgctxt "#30012"
 msgid "Product ID (empty - use hostname)"
 msgstr "Product ID (empty - use hostname)"
 
+msgctxt "#30016"
+msgid "HTTP User-Agent (empty - use predefined)"
+msgstr "HTTP User-Agent (empty - use predefined)"
+
 msgctxt "#30002"
 msgid "Stream quality"
 msgstr "Stream quality"
