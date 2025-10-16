@@ -96,7 +96,6 @@ struct Recording
 {
   std::string		strRecordId;
   std::string		strTitle;
-  std::string		strStreamUrl;
   std::string		strPlotOutline;
   std::string		strPlot;
   std::string		strChannelName;
@@ -105,10 +104,8 @@ struct Recording
   std::string strDirectory;
   bool bRadio;
   int iLifeTime;
-  std::string strStreamType;
   int iChannelUid;
   bool bIsPinLocked;
-  bool bIsDrm;
 };
 
 struct Timer

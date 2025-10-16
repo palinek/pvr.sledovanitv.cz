@@ -696,22 +696,10 @@ bool Data::LoadRecordings()
   {
     const auto & old_rec = (*recordings)[i];
     const auto & new_rec = (*new_recordings)[i];
-    if (new_rec.strRecordId != old_rec.strRecordId || new_rec.strStreamUrl != old_rec.strStreamUrl)
+    if (new_rec.strRecordId != old_rec.strRecordId)
     {
       changed_r = true;
       break;
-    }
-  }
-  if (changed_r)
-  {
-    for (auto & recording : *new_recordings)
-    {
-      std::string channel_id;
-      bool isDrm;
-      recording.strStreamUrl = m_manager.getRecordingUrl(recording.strRecordId, channel_id, isDrm);
-      // get the stream type based on channel
-      recording.strStreamType = ChannelStreamType(channel_id);
-      recording.bIsDrm = isDrm;
     }
   }
   bool changed_t = new_timers->size() != timers->size();
@@ -1240,9 +1228,10 @@ PVR_ERROR Data::GetRecordingStreamUrl(const std::string & recording, std::string
   if (!PinCheckUnlock(rec_i->bIsPinLocked, unlocked_now))
     return PVR_ERROR_REJECTED;
 
-  streamUrl = rec_i->strStreamUrl;
-  streamType = rec_i->strStreamType;
-  isDrm = rec_i->bIsDrm;
+  std::string channel_id;
+  streamUrl = m_manager.getRecordingUrl(rec_i->strRecordId, channel_id, isDrm);
+  // get the stream type based on channel
+  streamType = ChannelStreamType(channel_id);
   return PVR_ERROR_NO_ERROR;
 }
 
