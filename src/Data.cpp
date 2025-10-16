@@ -530,7 +530,7 @@ bool Data::LoadEPG(time_t iStart, bool bSmallStep)
         iptventry.strIconPath = epgEntry.value("poster", "");
         std::string availability = epgEntry.value("availability", "none");
         iptventry.availableTimeshift = availability == "timeshift" || availability == "pvr";
-        iptventry.strRecordId = epgEntry.value("recordId", "");
+        iptventry.strRecordId = epgEntry.contains("recordId") ? std::to_string(epgEntry["recordId"].get<int>()) : "";
         iptventry.starRating = round(epgEntry.value("score", 0.0));
         const json & parent_rating = epgEntry.value("ratingAge", json{json::value_t::null});
         iptventry.parentalRating = parent_rating.is_number() ? parent_rating.get<int>() : 0;
@@ -636,7 +636,7 @@ bool Data::LoadRecordings()
 
     if ((startTime + duration) < now)
     {
-      iptvrecording.strRecordId = record.value("id", "0");
+      iptvrecording.strRecordId = std::to_string(record.value("id", 0));
       iptvrecording.strTitle = std::move(title);
 
       if (channel_i != channels->cend())
