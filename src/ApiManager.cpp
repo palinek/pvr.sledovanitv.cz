@@ -263,7 +263,7 @@ bool ApiManager::isSuccess(const std::string &response)
 bool ApiManager::deletePairing(const json & root)
 {
   // try to delete pairing
-  const std::string old_dev_id = root.is_null() ? "" : root.value("deviceId", "");
+  const std::string old_dev_id = root.is_null() ? "" : (root.contains("deviceId") ? std::to_string(root["deviceId"].get<int>()) : "");;
   if (old_dev_id.empty())
     return true; // no previous pairing
 
@@ -337,15 +337,10 @@ bool ApiManager::pairDevice(json & root)
 
   if (isSuccess(pairJson, root))
   {
-    int devId = root.value("deviceId", 0);
-    std::string passwd = root.value("password", "");
+    m_deviceId = root.contains("deviceId") ? std::to_string(root["deviceId"].get<int>()) : "";
+    m_password = root.value("password", "");
 
-    char buf[256];
-    sprintf(buf, "%d", devId);
-    m_deviceId = buf;
-    m_password = passwd;
-
-    kodi::Log(ADDON_LOG_DEBUG, "Device ID: %d, Password: %s", devId, passwd.c_str());
+    kodi::Log(ADDON_LOG_DEBUG, "Device ID: %d, Password: %s", m_deviceId.c_str(), m_password.c_str());
 
     const bool paired = !m_deviceId.empty() && !m_password.empty();
 
