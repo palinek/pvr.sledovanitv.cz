@@ -24,6 +24,7 @@
  *
  */
 
+#include "kodi/AddonBase.h"
 #include <json/json.h>
 #if defined(TARGET_POSIX)
 #include <unistd.h>
@@ -167,17 +168,24 @@ std::string ApiManager::formatTime(time_t t)
   return buf;
 }
 
+std::string ApiManager::generateUserAgent()
+{
+  return "Kodi-" + kodi::addon::GetAddonInfo("id") + '/' + kodi::addon::GetAddonInfo("version");
+}
+
 ApiManager::ApiManager(ServiceProvider_t serviceProvider
     , const std::string & userName
     , const std::string & userPassword
     , const std::string & overridenMac
     , const std::string & product
+    , const std::string & userAgent
     , uint64_t instanceNo)
   : m_serviceProvider{serviceProvider}
   , m_userName{userName}
   , m_userPassword{userPassword}
   , m_overridenMac{overridenMac}
   , m_product{product}
+  , m_userAgent{userAgent.empty() ? generateUserAgent() : userAgent}
   , m_instanceNo{instanceNo}
   , m_pinUnlocked{false}
   , m_sessionId{std::make_shared<std::string>()}
@@ -195,13 +203,15 @@ std::string ApiManager::call(const std::string & urlPath, const ApiParams_t & pa
       return std::string();
   }
   std::string url = urlPath;
-  if (!paramsMap.empty())
+  const std::string query = buildQueryString(paramsMap, putSessionVar);
+  if (!query.empty())
   {
     url += '?';
-    url += buildQueryString(paramsMap, putSessionVar);
+    url += query;
   }
-  // add User-Agent header... TODO: make it configurable
-  url += "|User-Agent=okhttp%2F3.12.0";
+
+  url += "|User-Agent=";
+  url += m_userAgent;
   std::string response;
 
   kodi::vfs::CFile fh;
@@ -606,7 +616,11 @@ std::string ApiManager::buildQueryString(const ApiParams_t & paramMap, bool putS
   if (putSessionVar)
   {
     auto session_id = std::atomic_load(&m_sessionId);
-    strOut += "&PHPSESSID=";
+    if (!strOut.empty())
+    {
+      strOut += "&";
+    }
+    strOut += "PHPSESSID=";
     strOut += *session_id;
   }
 

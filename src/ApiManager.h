@@ -60,6 +60,7 @@ public:
 public:
   static std::string formatTime(time_t t);
   static std::string urlEncode(const std::string &str);
+  static std::string generateUserAgent();
 
 public:
   ApiManager(ServiceProvider_t serviceProvider
@@ -67,6 +68,7 @@ public:
       , const std::string & userPassword
       , const std::string & overridenMac //!< device identifier (value for overriding the MAC address detection)
       , const std::string & product //!< product identifier (value for overriding the hostname detection)
+      , const std::string & userAgent //!< HTTP header User-Agent (value for overriding the predefined)
       , uint64_t instanceNo
       );
 
@@ -87,6 +89,7 @@ public:
   bool loggedIn() const;
   bool pinUnlocked() const;
   bool registerDrm(std::string & licenseUrl, std::string & certificate) const;
+  void setUserAgent(const std::string userAgent) const;
 
 private:
   static std::string readPairFile(const std::string & pairFile);
@@ -109,6 +112,7 @@ private:
   const std::string m_userPassword;
   const std::string m_overridenMac;
   const std::string m_product;
+  const std::string m_userAgent;
   const uint64_t m_instanceNo;
   std::string m_serial;
   std::string m_deviceId;
