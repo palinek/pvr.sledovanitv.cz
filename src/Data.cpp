@@ -118,13 +118,15 @@ Data::Data(const kodi::addon::IInstanceInfo& instance)
 
   m_streamQuality = GetInstanceSettingEnum<ApiManager::StreamQuality_t>("streamQuality", ApiManager::SQ_DEFAULT);
   m_fullChannelEpgRefresh = GetInstanceSettingInt("fullChannelEpgRefresh", 24) * 3600; // make it seconds
-  m_loadingsRefresh = GetInstanceSettingInt("loadingsRefresh", 60);
-  m_keepAliveDelay = GetInstanceSettingInt("keepAliveDelay", 20);
-  m_epgCheckDelay = GetInstanceSettingInt("epgCheckDelay", 1) * 60; // make it seconds
+  m_loadingsRefresh = GetInstanceSettingInt("loadingsRefresh", 10) * 60; // make it seconds
+  m_keepAliveDelay = GetInstanceSettingInt("keepAliveDelay", 120) * 60;  // make it seconds
+  m_epgCheckDelay = GetInstanceSettingInt("epgCheckDelay", 10) * 60; // make it seconds
   m_useH265 = GetInstanceSettingBoolean("useH265", false);
   m_useAdaptive = GetInstanceSettingBoolean("useAdaptive", false);
   m_showLockedChannels = GetInstanceSettingBoolean("showLockedChannels", true);
   m_showLockedOnlyPin = GetInstanceSettingBoolean("showLockedOnlyPin", true);
+  kodi::Log(ADDON_LOG_DEBUG, "loadingsRefresh: %d, keepAliveDelay: %d, epgCheckDelay: %d, useHa265: %d, useAdaptive: %d, showLockedChannels: %d, showLockedOnlyPin: %d"
+      , m_loadingsRefresh, m_keepAliveDelay, m_epgCheckDelay, m_useH265, m_useAdaptive, m_showLockedChannels, m_showLockedOnlyPin);
 
   m_thread = std::thread{[this] { Process(); }};
 }
