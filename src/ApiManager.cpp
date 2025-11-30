@@ -67,8 +67,8 @@ using json = nlohmann::json;
 namespace sledovanitvcz
 {
 
-const std::string ApiManager::API_URL[SP_END] = { "https://sledovanitv.cz/api/", "https://api.moderntv.eu/api/" };
-const std::string ApiManager::API_UNIT[SP_END] = { "default", "modernitv" };
+const std::string ApiManager::API_URL[SP_END] = { "https://sledovanitv.cz/api/", "https://api.moderntv.eu/api/", "https://itv.tfm.sk/api/" };
+const std::string ApiManager::API_UNIT[SP_END] = { "default", "modernitv", "tfm" };
 const std::string ApiManager::PAIR_FILE = "pairinfo";
 
 /* Converts a hex character to its integer value */

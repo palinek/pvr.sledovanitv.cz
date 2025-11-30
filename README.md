@@ -9,6 +9,7 @@ unofficial [sledovanitv.cz](https://sledovanitv.cz) PVR client addon for [Kodi](
 ## Currently supported service providers
 - [sledovanitv.cz](https://sledovanitv.cz)
 - [modernitv.cz](https://modernitv.cz)
+- [tfm.sk](https://www.tfm.sk)
 
 ## Build instructions
 

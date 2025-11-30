@@ -51,6 +51,7 @@ public:
     SP_DEFAULT = 0
       , SP_SLEDOVANITV_CZ = SP_DEFAULT
       , SP_MODERNITV_CZ = 1
+      , SP_TFM_SK = 2
       , SP_END
   };
 public:

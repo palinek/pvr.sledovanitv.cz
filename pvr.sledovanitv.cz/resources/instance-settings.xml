@@ -11,6 +11,7 @@
             <options>
               <option label="30014">0</option> <!-- ServiceProvider_t::SP_SLEDOVANITV_CZ -->
               <option label="30015">1</option> <!-- ServiceProvider_t::SP_MODERNITV_CZ -->
+              <option label="30016">2</option> <!-- ServiceProvider_t::SP_TFM_SK -->
             </options>
           </constraints>
           <control type="list" format="string" />
