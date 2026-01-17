@@ -30,7 +30,7 @@ msgctxt "#30015"
 msgid "modernitv.cz"
 msgstr "modernitv.cz"
 
-msgctxt "#30016"
+msgctxt "#30017"
 msgid "tfm.sk"
 msgstr "tfm.sk"
 
