@@ -365,7 +365,17 @@ bool ApiManager::pairDevice(Json::Value & root)
   return false;
 }
 
-bool ApiManager::login()
+void ApiManager::addCapabilities(const bool useH265, const bool useAdaptive, ApiParams_t & param)
+{
+  std::string caps = "vast,clientvast,webvtt";
+  if (useH265)
+    caps += ",h265";
+  if (useAdaptive)
+    caps += ",adaptive2";
+  param.emplace_back("capabilities", std::move(caps));
+}
+
+bool ApiManager::login(bool useH265, bool useAdaptive)
 {
   m_pinUnlocked = false;
   Json::Value pairing_root;
@@ -381,9 +391,10 @@ bool ApiManager::login()
   ApiParams_t param;
   param.emplace_back("deviceId", m_deviceId);
   param.emplace_back("password", m_password);
-  param.emplace_back("version", "2.6.21");
+  param.emplace_back("version", "2.137.0");
   param.emplace_back("lang", "en");
   param.emplace_back("unit", API_UNIT[m_serviceProvider]);
+  addCapabilities(useH265, useAdaptive, param);
 
   Json::Value root;
 
@@ -470,12 +481,7 @@ bool ApiManager::getPlaylist(StreamQuality_t quality, bool useH265, bool useAdap
   params.emplace_back("uuid", m_serial);
   params.emplace_back("format", "m3u8");
   params.emplace_back("quality", std::to_string(quality));
-  std::string caps = "webvtt";
-  if (useH265)
-    caps += ",h265";
-  if (useAdaptive)
-    caps += ",adaptive2";
-  params.emplace_back("capabilities", std::move(caps));
+  addCapabilities(useH265, useAdaptive, params);
   params.emplace_back("drm", "widevine");
   params.emplace_back("subtitles", "1");
   return isSuccess(apiCall("playlist", params), root);

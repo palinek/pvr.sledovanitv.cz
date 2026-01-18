@@ -305,7 +305,7 @@ void Data::LoginLoop()
   {
     if (0 >= login_delay)
     {
-      if (m_manager.login())
+      if (m_manager.login(m_useH265, m_useAdaptive))
       {
         registerDrm();
         ConnectionStateChange("Connected", PVR_CONNECTION_STATE_CONNECTED, "");
