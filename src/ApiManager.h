@@ -69,7 +69,7 @@ public:
       , uint64_t instanceNo
       );
 
-  bool login();
+  bool login(bool useH265, bool useAdaptive);
   bool pinUnlock(const std::string & pin);
   bool getPlaylist(StreamQuality_t quality, bool useH265, bool useAdaptive, nlohmann::json & root);
   bool getStreamQualities(nlohmann::json & root);
@@ -92,6 +92,7 @@ private:
   static std::string readPairFile(const std::string & pairFile);
   static bool isSuccess(const std::string &response, nlohmann::json & root);
   static bool isSuccess(const std::string &response);
+  static void addCapabilities(const bool useH265, const bool useAdaptive, ApiParams_t & param);
 
   std::string buildQueryString(const ApiParams_t & paramMap, bool putSessionVar) const;
   std::string call(const std::string & urlPath, const ApiParams_t & paramsMap, bool putSessionVar) const;
