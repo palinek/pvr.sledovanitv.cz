@@ -21,6 +21,7 @@
     <disclaimer lang="cs_CZ">Tento program je rozšiřován v naději, že bude užitečný, avšak BEZ JAKÉKOLIV ZÁRUKY. Autoři nejsou žádným způsobem zodpovědní za selhání při nahrávání, neplatné časovače, ztracený čas, či jakékoliv jiné nežádoucí události...</disclaimer>
     <disclaimer lang="sk_SK">Tento program je rozširovaný v nádeji, že bude užitočný, avšak BEZ AKEJKOĽVEK ZÁRUKY. Autori žiadnym spôsobom nenesú zodpovednosť za zlyhanie pri nahrávaní, neplatné časovače, stratený čas, či akékoľvek iné nežiadúce dopady...</disclaimer>
     <platform>@PLATFORM@</platform>
+    <license>GPL-2.0-or-later</license>
     <assets>
       <icon>resources/logo.png</icon>
     </assets>
