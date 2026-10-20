@@ -180,6 +180,7 @@ ApiManager::ApiManager(ServiceProvider_t serviceProvider
     , const std::string & overridenMac
     , const std::string & product
     , const std::string & userAgent
+    , const std::string & pairingType
     , uint64_t instanceNo)
   : m_serviceProvider{serviceProvider}
   , m_userName{userName}
@@ -187,6 +188,7 @@ ApiManager::ApiManager(ServiceProvider_t serviceProvider
   , m_overridenMac{overridenMac}
   , m_product{product}
   , m_userAgent{userAgent.empty() ? generateUserAgent() : userAgent}
+  , m_pairingType{pairingType.empty() ? "androidportable" : pairingType}
   , m_instanceNo{instanceNo}
   , m_pinUnlocked{false}
   , m_sessionId{std::make_shared<std::string>()}
@@ -326,7 +328,7 @@ bool ApiManager::pairDevice(json & root)
 
     params.emplace_back("username", m_userName);
     params.emplace_back("password", m_userPassword);
-    params.emplace_back("type", "androidportable");
+    params.emplace_back("type", m_pairingType);
     params.emplace_back("serial", m_serial);
     params.emplace_back("product", product);
     params.emplace_back("unit", API_UNIT[m_serviceProvider]);

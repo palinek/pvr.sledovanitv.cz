@@ -66,6 +66,7 @@ public:
       , const std::string & overridenMac //!< device identifier (value for overriding the MAC address detection)
       , const std::string & product //!< product identifier (value for overriding the hostname detection)
       , const std::string & userAgent //!< HTTP header User-Agent (value for overriding the predefined)
+      , const std::string & pairingType //!< device type the account is paired as (empty - androidportable)
       , uint64_t instanceNo
       );
 
@@ -111,6 +112,7 @@ private:
   const std::string m_overridenMac;
   const std::string m_product;
   const std::string m_userAgent;
+  const std::string m_pairingType;
   const uint64_t m_instanceNo;
   std::string m_serial;
   std::string m_deviceId;

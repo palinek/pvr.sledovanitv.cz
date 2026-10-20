@@ -58,6 +58,19 @@
           </constraints>
           <control type="edit" format="string" />
         </setting>
+        <setting id="pairingType" type="string" label="30018" help="30023">
+          <level>1</level>
+          <default>androidportable</default>
+          <constraints>
+            <options>
+              <option label="30019">androidportable</option>
+              <option label="30020">xbmc</option>
+              <option label="30021">androidtv</option>
+              <option label="30022">ios</option>
+            </options>
+          </constraints>
+          <control type="list" format="string" />
+        </setting>
         <setting id="streamQuality" type="integer" label="30002">
           <level>1</level>
           <default>0</default> <!-- StreamQuality_t::SQ_DEFAULT -->

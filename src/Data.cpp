@@ -106,6 +106,7 @@ Data::Data(const kodi::addon::IInstanceInfo& instance)
     , GetInstanceSettingString("deviceId")
     , GetInstanceSettingString("productId")
     , GetInstanceSettingString("userAgent")
+    , GetInstanceSettingString("pairingType")
     , instance.GetNumber()
   }
 {

@@ -58,6 +58,30 @@ msgctxt "#30016"
 msgid "HTTP User-Agent (empty - use predefined)"
 msgstr "HTTP User-Agent (prázdne - použiť preddefinované)"
 
+msgctxt "#30018"
+msgid "Device type for pairing"
+msgstr "Typ zariadenia pre párovanie"
+
+msgctxt "#30019"
+msgid "Android (mobile)"
+msgstr "Android (mobil)"
+
+msgctxt "#30020"
+msgid "Kodi"
+msgstr "Kodi"
+
+msgctxt "#30021"
+msgid "Android TV"
+msgstr "Android TV"
+
+msgctxt "#30022"
+msgid "iOS"
+msgstr "iOS"
+
+msgctxt "#30023"
+msgid "The device type the account is paired as. Which types a subscription allows depends on the package. Delete the paired device in the account to pair again with another type."
+msgstr "Typ zariadenia, ako ktoré sa účet páruje. Ktoré typy predplatné povoľuje, záleží od balíka. Pre spárovanie s iným typom zmažte spárované zariadenie v účte."
+
 msgctxt "#30002"
 msgid "Stream quality"
 msgstr "Kvalita streamu"
