@@ -871,6 +871,43 @@ PVR_ERROR Data::GetChannelStreamProperties(const kodi::addon::PVRChannel& channe
   if (PVR_ERROR_NO_ERROR != ret)
     return ret;
 
+  // Try to play the currently running programme through its timeshift stream
+  // (EVENT playlist) to allow seeking back; fall back to the plain live stream.
+  if (!channel.GetIsRadio())
+  {
+    decltype (m_channels) channels;
+    decltype (m_epg) epg;
+    {
+      std::lock_guard<std::mutex> critical(m_mutex);
+      channels = m_channels;
+      epg = m_epg;
+    }
+    auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&channel] (const Channel & c) { return c.iUniqueId == channel.GetUniqueId(); });
+    if (channels->cend() != channel_i)
+    {
+      auto ch_epg_i = epg->find(channel_i->strId);
+      if (epg->cend() != ch_epg_i)
+      {
+        const time_t now = time(nullptr);
+        for (const auto & e : ch_epg_i->second.epg)
+        {
+          if (e.second.availableTimeshift && e.second.startTime <= now && now < e.second.endTime && !e.second.strEventId.empty())
+          {
+            std::string tsUrl, tsChannel;
+            int duration = 0;
+            if (m_manager.getTimeShiftInfo(e.second.strEventId, tsUrl, tsChannel, duration) && !tsUrl.empty())
+            {
+              kodi::Log(ADDON_LOG_INFO, "%s live channel %s played via timeshift of event %s", __FUNCTION__, channel_i->strId.c_str(), e.second.strEventId.c_str());
+              properties = StreamProperties(tsUrl, ChannelStreamType(tsChannel.empty() ? channel_i->strId : tsChannel), isDrm, false);
+              return PVR_ERROR_NO_ERROR;
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+
   properties = StreamProperties(streamUrl, streamType, isDrm, true);
   return PVR_ERROR_NO_ERROR;
 }
@@ -1405,7 +1442,8 @@ std::vector<kodi::addon::PVRStreamProperty> Data::StreamProperties(const std::st
   if (m_useAdaptive && 0 < ADAPTIVE_TYPES.count(streamType))
   {
     properties.emplace_back(PVR_STREAM_PROPERTY_INPUTSTREAM, "inputstream.adaptive");
-    properties.emplace_back("inputstream.adaptive.live_delay", "30");
+    if (isLive)
+      properties.emplace_back("inputstream.adaptive.live_delay", "30");
     if (isDrm)
     {
       decltype (m_drmCertificate) certificate;
