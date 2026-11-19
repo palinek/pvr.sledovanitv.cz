@@ -92,6 +92,14 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
+        <setting id="liveAsEpg" type="boolean" label="30024" help="30025">
+          <level>1</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="enable" setting="useAdaptive">true</dependency>
+          </dependencies>
+          <control type="toggle" />
+        </setting>
         <setting id="showLockedChannels" type="boolean" label="30007">
           <level>1</level>
           <default>true</default>

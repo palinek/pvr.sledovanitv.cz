@@ -102,6 +102,14 @@ msgctxt "#30006"
 msgid "Use inputstream.adaptive addon"
 msgstr "Použiť doplnok inputstream.adaptive"
 
+msgctxt "#30024"
+msgid "Try to play live TV as event"
+msgstr "Živý prenos ako udalosť, ak existuje"
+
+msgctxt "#30025"
+msgid "If available, play the live stream as EPG event. Pros/cons:\n(+) proper seek in stream\n(+/-) different stream quality available\n(-) tip may be delayed\n(-) no switch channel UI option"
+msgstr "Prehávať živý prenos ako EPG udalosť, ak existuje. Klady/Zápory:\n(+) pretáčanie\n(+/-) rôzne kvality prenosu\n(-) môže byť oneskorené\n(-) nemožnosť priameho prepínania programov"
+
 msgctxt "#30007"
 msgid "Show unavailable channels"
 msgstr "Zobrazovať nedostupné kanály"

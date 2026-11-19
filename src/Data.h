@@ -218,6 +218,8 @@ private:
   mutable std::condition_variable   m_waitCond;
   std::thread                       m_thread;
 
+  const bool m_bLiveAsEpg;
+
   // stored data from backend (used by multiple threads...)
   std::shared_ptr<const group_container_t> m_groups;
   std::shared_ptr<const channel_container_t> m_channels;

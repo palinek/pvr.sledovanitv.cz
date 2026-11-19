@@ -85,6 +85,7 @@ Data::Data(const kodi::addon::IInstanceInfo& instance)
   , m_bLoadRecordings{true}
   , m_bLoadPlayList{true}
   , m_bChannelsLoaded{false}
+  , m_bLiveAsEpg{GetInstanceSettingBoolean("liveAsEpg")}
   , m_groups{std::make_shared<group_container_t>()}
   , m_channels{std::make_shared<channel_container_t>()}
   , m_epg{std::make_shared<epg_container_t>()}
@@ -872,7 +873,7 @@ PVR_ERROR Data::GetChannelStreamProperties(const kodi::addon::PVRChannel& channe
 
   // Try to play the currently running programme through its timeshift stream
   // (EVENT playlist) to allow seeking back; fall back to the plain live stream.
-  if (!channel.GetIsRadio())
+  if (m_bLiveAsEpg && !channel.GetIsRadio())
   {
     decltype (m_channels) channels;
     decltype (m_epg) epg;
