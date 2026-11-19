@@ -884,13 +884,13 @@ PVR_ERROR Data::GetChannelStreamProperties(const kodi::addon::PVRChannel& channe
     auto channel_i = std::find_if(channels->cbegin(), channels->cend(), [&channel] (const Channel & c) { return c.iUniqueId == channel.GetUniqueId(); });
     if (channels->cend() != channel_i)
     {
-      auto ch_epg_i = epg->find(channel_i->strId);
-      if (epg->cend() != ch_epg_i)
+      if (const auto ch_epg_i = epg->find(channel_i->strId); epg->cend() != ch_epg_i)
       {
-        const time_t now = time(nullptr);
-        for (const auto & e : ch_epg_i->second.epg)
+        const auto & epg_map = ch_epg_i->second.epg;
+        if (auto e_i = epg_map.upper_bound(time(nullptr)); epg_map.cbegin() != e_i)
         {
-          if (e.second.availableTimeshift && e.second.startTime <= now && now < e.second.endTime && !e.second.strEventId.empty())
+          const auto & e = *(--e_i);
+          if (e.second.availableTimeshift && !e.second.strEventId.empty())
           {
             std::string tsUrl, tsChannel;
             int duration = 0;
@@ -898,9 +898,10 @@ PVR_ERROR Data::GetChannelStreamProperties(const kodi::addon::PVRChannel& channe
             {
               kodi::Log(ADDON_LOG_INFO, "%s live channel %s played via timeshift of event %s", __FUNCTION__, channel_i->strId.c_str(), e.second.strEventId.c_str());
               properties = StreamProperties(tsUrl, ChannelStreamType(tsChannel.empty() ? channel_i->strId : tsChannel), isDrm, false);
+              // add flag for kodi to about timeshift availability
+              properties.emplace_back(PVR_STREAM_PROPERTY_LIVEPLAYBACKASEPG, "true");
               return PVR_ERROR_NO_ERROR;
             }
-            break;
           }
         }
       }
